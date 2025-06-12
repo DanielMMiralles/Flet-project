@@ -1,11 +1,12 @@
 #Where to define the routes for the application
 from views.auth.login_view import login_view
-
+from views.auth.register_view import register_view
 
 def setup_routes(page):
     # Initialize routes dictionary
     routes = {
-        "/login": login_view(page)
+        "/login": login_view(page),
+        "/register": register_view(page)
     }
 
     def route_change(route):

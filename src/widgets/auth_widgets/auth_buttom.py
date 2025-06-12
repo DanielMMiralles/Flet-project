@@ -11,5 +11,6 @@ def minimal_button(text: str, on_click: ft.ControlEventType) -> ft.ElevatedButto
             padding=20,
             overlay_color=ft.Colors.with_opacity(0.1, ft.Colors.PRIMARY)
         ),
-        height=45
+        height=45,
+        on_click=on_click,
     )
