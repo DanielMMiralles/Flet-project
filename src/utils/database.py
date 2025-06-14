@@ -69,3 +69,20 @@ def authenticate_user(username, password, role):
     
     conn.close()
     return user
+
+def register_user(username, password, role):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Verificar si el usuario ya existe
+    cursor.execute("SELECT * FROM Usuarios WHERE usuario = ?", (username,))
+    if cursor.fetchone():
+        conn.close()
+        return False  # Usuario ya existe
+
+    # Insertar el nuevo usuario
+    cursor.execute("INSERT INTO Usuarios (usuario, password, rol) VALUES (?, ?, ?)",
+                   (username, password, role))
+    conn.commit()
+    conn.close()
+    return True  # Registro exitoso
