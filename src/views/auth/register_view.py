@@ -19,7 +19,7 @@ def register_view(page: ft.Page):
         "Registrar",
         register,
     )
-    bttext_auth = btext_auth(page, "¿Ya tienes cuenta?", "Inicia sesión aquí")
+    bttext_auth = btext_auth(page, "¿Ya tienes cuenta?", "Inicia sesión aquí", "/login")
 
     return auth_card(
         page,

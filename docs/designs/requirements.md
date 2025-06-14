@@ -10,7 +10,6 @@ Desarrollar un sistema para gestionar:
     ▶️ Seguimiento semanal de avances y horas trabajadas
 
 Actores Identificados
-    ▶️ Actor	Responsabilidades
     ▶️ Cliente	Registrarse, solicitar productos con requisitos específicos
     ▶️ Jefe de Proyecto	Atender solicitudes, registrar productos, asignar ingenieros
     ▶️ Ingeniero	Desarrollar productos, reportar avances y horas trabajadas

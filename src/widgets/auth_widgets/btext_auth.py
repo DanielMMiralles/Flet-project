@@ -1,6 +1,6 @@
 import flet as ft
 
-def btext_auth(page: ft.Page, normal: str, link: str):
+def btext_auth(page: ft.Page, normal: str, link: str, route: str):
     # Crear un texto normal con Row para simular el comportamiento de RichText
     normal_text = ft.Text(normal, color=ft.Colors.WHITE70)
     link_text = ft.Text(
@@ -19,7 +19,7 @@ def btext_auth(page: ft.Page, normal: str, link: str):
     # Usamos un Stack para poder aplicar efectos de elevación
     container = ft.Container(
         content=text_row,
-        on_click=lambda e: page.go("/register"),
+        on_click=lambda e: page.go(route),
         width=300,
         padding=ft.padding.only(top=50),
         alignment=ft.alignment.center_right,

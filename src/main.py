@@ -15,4 +15,5 @@ def main(page: ft.Page):
 
     setup_routes(page)
     page.go("/login")
+
 ft.app(main)
