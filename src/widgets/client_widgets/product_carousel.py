@@ -2,16 +2,19 @@ import flet as ft
 import os
 from models.product import Product
 from services.product_service import get_products
+from widgets.snackbar_design import modern_snackbar
 
 def products_carousel_view(page: ft.Page, products=None):
     """Vista de carrusel de productos con diseño moderno en tema oscuro"""
     try:
+        # Variable para almacenar el producto seleccionado
+        selected_product_id = None
+        
         # Usar los productos proporcionados o obtenerlos si no se proporcionan
         if products is None:
             products = get_products()
             print(f"Productos obtenidos: {len(products)}")
-            for p in products:
-                print(f"Producto: ID={p.id}, Nombre={p.name}, Imagen={p.image}")
+
         
         if not products:
             # Si no hay productos, mostrar mensaje
@@ -28,13 +31,45 @@ def products_carousel_view(page: ft.Page, products=None):
                 alignment=ft.alignment.center
             )
 
-                # Obtener la ruta base del proyecto para las imágenes
+        # Obtener la ruta base del proyecto para las imágenes
         from pathlib import Path
         base_dir = Path(__file__).parent.parent.parent
         assets_dir = os.path.join(base_dir, "assets")
+        
+        # Función para manejar la selección de tarjetas
+        def select_product(e, product_id):
+            nonlocal selected_product_id
+            # Actualizar el producto seleccionado
+            selected_product_id = product_id
+            
+            # Actualizar todas las tarjetas para reflejar la selección
+            for card in carousel.controls:
+                card_id = getattr(card, "data", None)
+                if card_id == selected_product_id:
+                    # Tarjeta seleccionada
+                    card.border = ft.border.all(3, ft.Colors.BLUE_ACCENT)
+                    card.shadow = ft.BoxShadow(
+                        color=ft.Colors.with_opacity(0.5, ft.Colors.BLUE_ACCENT),
+                        blur_radius=15,
+                        spread_radius=2,
+                        offset=ft.Offset(0, 0)
+                    )
+                else:
+                    # Tarjeta no seleccionada
+                    card.border = None
+                    card.shadow = ft.BoxShadow(
+                        color=ft.Colors.with_opacity(0.2, ft.Colors.BLACK),
+                        blur_radius=10,
+                        offset=ft.Offset(0, 5)
+                    )
+            
+            # Mostrar el botón de enviar solicitud
+            send_request_btn.visible = True
+            send_request_btn.text = f"Enviar solicitud para {next((p.name for p in products if p.id == selected_product_id), 'producto')}"
+            page.update()
 
         # Función para crear tarjetas de producto
-        def product_card(product: Product) -> ft.Container:
+        def product_card(product: Product, index: int) -> ft.Container:
             # Determinar la URL de la imagen o usar una imagen por defecto
             image_path = product.image
             
@@ -45,7 +80,6 @@ def products_carousel_view(page: ft.Page, products=None):
                 image_path = os.path.join(base_dir, relative_path)
                 # Verificar si el archivo existe
                 if not os.path.exists(image_path):
-                    print(f"Advertencia: La imagen no existe en: {image_path}")
                     # Intentar otra ubicación
                     image_path = os.path.join(base_dir, "assets", "productos", os.path.basename(relative_path))
                     if not os.path.exists(image_path):
@@ -55,23 +89,30 @@ def products_carousel_view(page: ft.Page, products=None):
                             if not os.path.exists(image_path):
                                 image_path = "https://via.placeholder.com/250x180?text=" + product.name.replace(" ", "+")
                         else:
-                            print(f"Usando imagen por defecto para: {product.name}")
                             image_path = "https://via.placeholder.com/250x180?text=" + product.name.replace(" ", "+")
             elif not image_path:
                 image_path = "https://via.placeholder.com/250x180?text=" + product.name.replace(" ", "+")
+
+            # Calcular la elevación basada en la posición (para efecto 3D)
+            # Las tarjetas centrales tendrán más elevación
+            center_position = len(products)/2
+            distance_from_center = abs(index - center_position)
+            max_distance = center_position
+            normalized_distance = distance_from_center / max_distance if max_distance > 0 else 1
+            elevation_factor = 1 - normalized_distance  # 1 para el centro, 0 para los extremos
+
+            # Aplicar una escala no lineal para hacer el efecto más pronunciado
+            elevation_factor = elevation_factor ** 2.5  # Potencia más alta para un efecto más dramático
+
             
-            # Imprimir información de depuración
-            print(f"Creando tarjeta para producto: {product.name if hasattr(product, 'name') else 'Sin nombre'}")
-            print(f"  - Imagen: {image_path}")
-            print(f"  - Descripción: {product.description if hasattr(product, 'description') else 'Sin descripción'}")
-            
-            return ft.Container(
+            # Crear la tarjeta
+            card = ft.Container(
                 content=ft.Column(
                     controls=[
                         # Imagen del producto
                         ft.Container(
                             content=ft.Image(
-                                src=f"{image_path}",
+                                src=image_path,
                                 height=180,
                                 width=280,
                                 fit=ft.ImageFit.COVER,
@@ -79,7 +120,7 @@ def products_carousel_view(page: ft.Page, products=None):
                             ),
                             clip_behavior=ft.ClipBehavior.ANTI_ALIAS,
                             border_radius=ft.border_radius.only(top_left=15, top_right=15),
-                            bgcolor=ft.Colors.BLUE_GREY_100,  # Color de fondo mientras carga la imagen
+                            bgcolor=ft.Colors.BLUE_GREY_100,
                             width=280,
                             height=180
                         ),
@@ -89,17 +130,17 @@ def products_carousel_view(page: ft.Page, products=None):
                             content=ft.Column(
                                 controls=[
                                     ft.Text(
-                                        product.name if hasattr(product, 'name') else "Sin nombre",
+                                        product.name,
                                         size=16,
                                         weight="bold",
-                                        color=ft.Colors.BLACK,  # Color de texto explícito
+                                        color=ft.Colors.BLACK,
                                         max_lines=1,
                                         overflow=ft.TextOverflow.ELLIPSIS
                                     ),
                                     ft.Text(
-                                        product.description if hasattr(product, 'description') else "Sin descripción",
+                                        product.description,
                                         size=12,
-                                        color=ft.Colors.GREY_800,  # Color de texto explícito
+                                        color=ft.Colors.GREY_800,
                                         max_lines=2,
                                         overflow=ft.TextOverflow.ELLIPSIS
                                     ),
@@ -107,14 +148,14 @@ def products_carousel_view(page: ft.Page, products=None):
                                         controls=[
                                             ft.Icon(ft.Icons.PEOPLE_OUTLINE, size=14, color=ft.Colors.BLUE_GREY),
                                             ft.Text(
-                                                f"{product.engineers if hasattr(product, 'engineers') else 0} ingenieros", 
+                                                f"{product.engineers} ingenieros", 
                                                 size=12,
                                                 color=ft.Colors.BLUE_GREY
                                             ),
                                             ft.VerticalDivider(width=10),
                                             ft.Icon(ft.Icons.CALENDAR_TODAY, size=14, color=ft.Colors.BLUE_GREY),
                                             ft.Text(
-                                                f"{product.days if hasattr(product, 'days') else 0} días", 
+                                                f"{product.days} días", 
                                                 size=12,
                                                 color=ft.Colors.BLUE_GREY
                                             )
@@ -128,7 +169,7 @@ def products_carousel_view(page: ft.Page, products=None):
                             ),
                             padding=15,
                             alignment=ft.alignment.center,
-                            bgcolor=ft.Colors.WHITE,  # Fondo blanco para el contenido
+                            bgcolor=ft.Colors.WHITE,
                         )
                     ],
                     spacing=0
@@ -136,24 +177,38 @@ def products_carousel_view(page: ft.Page, products=None):
                 width=280,
                 height=300,
                 border_radius=15,
-                bgcolor=ft.Colors.WHITE,  # Fondo blanco para la tarjeta
-                shadow=ft.BoxShadow(
-                    color=ft.Colors.with_opacity(0.2, ft.Colors.BLACK),
-                    blur_radius=10,
-                    offset=ft.Offset(0, 5)  
-                ),
+                bgcolor=ft.Colors.WHITE,
                 clip_behavior=ft.ClipBehavior.ANTI_ALIAS,
-                on_click=lambda e: page.go(f"/client/product/{product.id}" if hasattr(product, 'id') else "/client")
+                on_click=lambda e: select_product(e, product.id),
+                data=product.id,  # Almacenar el ID del producto para referencia
+                shadow=ft.BoxShadow(
+                    color=ft.Colors.with_opacity(0.2 + (0.6 * elevation_factor), ft.Colors.WHITE54),  # Mucho más contraste
+                    blur_radius=5 + (25 * elevation_factor),  # Diferencia mucho mayor en el blur
+                    spread_radius=elevation_factor * 8,  # Spread mucho más pronunciado
+                    offset=ft.Offset(0, 2 - (elevation_factor * 4))  # Offset más pronunciado
+                ),
             )
+            
+            return card
     
         # Crear carrusel horizontal
         try:
+            # Crear el carrusel con tarjetas de productos
             carousel = ft.Row(
-                controls=[product_card(p) for p in products],
+                controls=[product_card(p, i) for i, p in enumerate(products)],
                 scroll=ft.ScrollMode.AUTO,
                 spacing=25,
                 vertical_alignment=ft.CrossAxisAlignment.START,
                 expand=True
+            )
+
+            send_request_btn = send_request_button()
+            send_request_btn.visible = False
+            
+            # Snackbar para confirmar envío
+            page.snackbar = ft.SnackBar(
+                content=ft.Text("Solicitud enviada correctamente"),
+                action="OK"
             )
             
             # Contenedor principal con título
@@ -164,7 +219,7 @@ def products_carousel_view(page: ft.Page, products=None):
                             "Nuestros Productos", 
                             size=28, 
                             weight="bold",
-                            color=ft.Colors.WHITE,  # Color de texto explícito
+                            color=ft.Colors.WHITE,
                             text_align=ft.TextAlign.CENTER
                         ),
                         ft.Divider(height=20, color=ft.Colors.TRANSPARENT),
@@ -177,22 +232,24 @@ def products_carousel_view(page: ft.Page, products=None):
                             controls=[
                                 ft.IconButton(
                                     icon=ft.Icons.ARROW_BACK_IOS,
-                                    icon_color=ft.Colors.WHITE,  # Color de icono explícito
+                                    icon_color=ft.Colors.WHITE,
                                     on_click=lambda e: carousel.scroll_to(delta=-300, duration=500)
                                 ),
+                                send_request_btn,
                                 ft.IconButton(
                                     icon=ft.Icons.ARROW_FORWARD_IOS,
-                                    icon_color=ft.Colors.WHITE,  # Color de icono explícito
+                                    icon_color=ft.Colors.WHITE,
                                     on_click=lambda e: carousel.scroll_to(delta=300, duration=500)
                                 )
                             ],
-                            alignment=ft.MainAxisAlignment.CENTER
+                            alignment=ft.MainAxisAlignment.CENTER,
+                            spacing=20
                         )
                     ],
                     horizontal_alignment=ft.CrossAxisAlignment.CENTER
                 ),
                 padding=ft.padding.symmetric(vertical=40),
-                bgcolor=ft.Colors.TRANSPARENT,  # Color de fondo para el contenedor principal
+                bgcolor=ft.Colors.TRANSPARENT
             )
         except Exception as e:
             print(f"Error al crear el carrusel: {e}")
@@ -220,6 +277,20 @@ def products_carousel_view(page: ft.Page, products=None):
         
         # Devolver un mensaje de error
         return ft.Container(
-            content=ft.Text(f"Error: {str(e)}", color=ft.colors.RED),
+            content=ft.Text(f"Error: {str(e)}", color=ft.Colors.RED),
             padding=20
         )
+
+def send_request_button():
+    """Botón para enviar solicitud de producto"""
+    return ft.ElevatedButton(
+        text="Enviar solicitud",
+        icon=ft.Icons.SEND,
+        style=ft.ButtonStyle(
+            color=ft.Colors.WHITE,
+            bgcolor=ft.Colors.BLUE,
+            elevation=5,
+            padding=15
+        ),
+        on_click=lambda e: e.page.open(modern_snackbar("Solicitud enviada correctamente", "info", 5000))
+    )
