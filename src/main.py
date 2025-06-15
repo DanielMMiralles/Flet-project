@@ -18,6 +18,8 @@ def main(page: ft.Page):
         "role": None
     }
 
+    page.assets_dir = "assets"
+
     # Verificar la versión de Flet para determinar la propiedad correcta para AppBar
     try:
         # Intentar acceder a la propiedad app_bar

@@ -3,12 +3,15 @@ import os
 from models.product import Product
 from services.product_service import get_products
 from widgets.snackbar_design import modern_snackbar
+from widgets.client_widgets.client_request_preview import client_request_preview
 
 def products_carousel_view(page: ft.Page, products=None):
     """Vista de carrusel de productos con diseño moderno en tema oscuro"""
     try:
         # Variable para almacenar el producto seleccionado
         selected_product_id = None
+        selected_product = None
+        
         
         # Usar los productos proporcionados o obtenerlos si no se proporcionan
         if products is None:
@@ -41,7 +44,8 @@ def products_carousel_view(page: ft.Page, products=None):
             nonlocal selected_product_id
             # Actualizar el producto seleccionado
             selected_product_id = product_id
-            
+            selected_product = next((p for p in products if p.id == product_id), None)
+
             # Actualizar todas las tarjetas para reflejar la selección
             for card in carousel.controls:
                 card_id = getattr(card, "data", None)
@@ -66,7 +70,42 @@ def products_carousel_view(page: ft.Page, products=None):
             # Mostrar el botón de enviar solicitud
             send_request_btn.visible = True
             send_request_btn.text = f"Enviar solicitud para {next((p.name for p in products if p.id == selected_product_id), 'producto')}"
+            
+            send_request_btn.on_click = lambda e: show_request_preview(e, selected_product)
             page.update()
+
+        # Función para mostrar la vista previa de solicitud
+        def show_request_preview(e, product):
+            if product:
+                client_request_preview(
+                    page, 
+                    product,
+                    on_close=lambda: print(f"Vista previa cerrada para {product.name}"),
+                    on_submit=lambda p: modern_snackbar(
+                        f"Solicitud enviada para {p.name}",
+                        "info",
+                        3000
+                    )
+                )
+            else:
+                page.snackbar = modern_snackbar(
+                    "Error: No se ha seleccionado ningún producto",
+                    "warning",
+                    3000
+                )
+
+        # Crear el botón de enviar solicitud
+        send_request_btn = ft.ElevatedButton(
+            text="Enviar solicitud",
+            icon=ft.Icons.SEND,
+            visible=False,
+            style=ft.ButtonStyle(
+                color=ft.Colors.WHITE,
+                bgcolor=ft.Colors.BLUE,
+                elevation=5,
+                padding=15
+            )
+        )    
 
         # Función para crear tarjetas de producto
         def product_card(product: Product, index: int) -> ft.Container:
@@ -201,10 +240,6 @@ def products_carousel_view(page: ft.Page, products=None):
                 vertical_alignment=ft.CrossAxisAlignment.START,
                 expand=True
             )
-
-            send_request_btn = send_request_button()
-            send_request_btn.visible = False
-            
             # Snackbar para confirmar envío
             page.snackbar = ft.SnackBar(
                 content=ft.Text("Solicitud enviada correctamente"),
@@ -243,12 +278,12 @@ def products_carousel_view(page: ft.Page, products=None):
                                 )
                             ],
                             alignment=ft.MainAxisAlignment.CENTER,
-                            spacing=20
+                            spacing=0
                         )
                     ],
                     horizontal_alignment=ft.CrossAxisAlignment.CENTER
                 ),
-                padding=ft.padding.symmetric(vertical=40),
+                padding=ft.padding.symmetric(vertical=20),
                 bgcolor=ft.Colors.TRANSPARENT
             )
         except Exception as e:
@@ -280,17 +315,3 @@ def products_carousel_view(page: ft.Page, products=None):
             content=ft.Text(f"Error: {str(e)}", color=ft.Colors.RED),
             padding=20
         )
-
-def send_request_button():
-    """Botón para enviar solicitud de producto"""
-    return ft.ElevatedButton(
-        text="Enviar solicitud",
-        icon=ft.Icons.SEND,
-        style=ft.ButtonStyle(
-            color=ft.Colors.WHITE,
-            bgcolor=ft.Colors.BLUE,
-            elevation=5,
-            padding=15
-        ),
-        on_click=lambda e: e.page.open(modern_snackbar("Solicitud enviada correctamente", "info", 5000))
-    )

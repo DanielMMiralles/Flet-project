@@ -2,6 +2,7 @@ import flet as ft
 from widgets.snackbar_design import modern_snackbar
 from widgets.app_bar import app_bar
 from widgets.client_widgets.product_carousel import products_carousel_view
+from widgets.page_footer import page_footer
 
 def client_view(page: ft.Page):
     """Vista para el panel de cliente"""
@@ -32,37 +33,40 @@ def client_view(page: ft.Page):
         
         page.title = "Cliente"
         
-        # Crear componentes de la interfaz
-        title = ft.Text("Panel de Cliente", size=30, weight="bold")
-        welcome = ft.Text(f"Bienvenido, {username}", size=20)
-        user_info = ft.Text(f"Has iniciado sesión como Cliente", size=16)
-        
-        # Botón de cerrar sesión
-        logout_btn = ft.ElevatedButton(
-            "Cerrar sesión", 
-            icon=ft.Icons.LOGOUT,
-            on_click=lambda _: page.go("/login")
-        )
-        
         products_carousel = products_carousel_view(page)
         if products_carousel is None:
             print("Error: products_carousel_view devolvió None")
             products_carousel = ft.Text("No se pudieron cargar los productos", size=16, color=ft.Colors.RED)
 
+        # Crear pie de página
+        footer = page_footer(page)
+
         # Crear contenido principal
-        content = ft.Column(
+        content = ft.Stack(
             controls=[
-                products_carousel,
-                ft.Divider(height=20, color=ft.Colors.TRANSPARENT),
-                title,
-                welcome,
-                user_info,
-                logout_btn,
+                ft.Container(
+                    content=ft.Column(
+                        controls=[
+                            products_carousel,
+                            ft.Container(height=60)  # Espacio para el pie de página
+                        ],
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                        spacing=20
+                    ),
+                    alignment=ft.alignment.center,
+                    expand=True
+                ),
+                ft.Container(
+                    content=footer,
+                    bottom=0,
+                    left=0,
+                    right=0,
+                    alignment=ft.Alignment(0, 1),  # Alineación al centro inferior,
+                ),
             ],
-            alignment=ft.MainAxisAlignment.CENTER,
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-            spacing=10
+            expand=True
         )
+        
         
         # Crear y devolver el contenedor principal
         print("Devolviendo contenido de client_view")

@@ -23,7 +23,7 @@ def btext_auth(page: ft.Page, normal: str, link: str, route: str):
         width=300,
         padding=ft.padding.only(top=50),
         alignment=ft.alignment.center_right,
-        # Usamos margin para simular la elevación ya que transform no está disponible
+        # Usamos margin para simular la elevación
         margin=ft.margin.only(top=0),
         animate=ft.Animation(300, ft.AnimationCurve.EASE_OUT),
     )

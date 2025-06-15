@@ -3,7 +3,7 @@ from widgets.snackbar_design import modern_snackbar
 
 def app_bar(page: ft.Page, user_role: str, user_name: str = "Usuario") -> ft.AppBar:
     # Configuración de colores para tema oscuro
-    BG_COLOR = ft.Colors.BLACK87
+    BG_COLOR = ft.Colors.BLACK12
     TEXT_COLOR = ft.Colors.ON_SURFACE
 
     # Configuración por rol
