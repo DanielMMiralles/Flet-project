@@ -16,17 +16,33 @@ def login_view(page: ft.Page):
         validate_login(user, password, role)
 
     def validate_login(user, password, role):
+        if not user or not password or not role:
+            page.snackbar = modern_snackbar(
+                message="Por favor, completa todos los campos.",
+                message_type="error",
+                duration=3000
+            )
+            page.update()
+            return
+
         if authenticate_user(user, password, role):
+            # Guardar datos de sesión
             page.session_data['user'] = user
             page.session_data['password'] = password
             page.session_data['role'] = role
-            page.go(f"/{role}")
+            
+            print(f"Login exitoso. Datos de sesión: {page.session_data}")
+            
+            # Redirigir según el rol (asegurarse de que sea minúscula)
+            target_route = f"/{role.lower()}"
+            print(f"Redirigiendo a: {target_route}")
+            page.go(target_route)
         else:
             page.snackbar = modern_snackbar(
                 message="Credenciales incorrectas. Inténtalo de nuevo.",
                 message_type="error",
+                duration=3000
             )
-            page.open(page.snackbar)
             page.update()
 
     user_input = ft.TextField(label="Username", autofocus=True)

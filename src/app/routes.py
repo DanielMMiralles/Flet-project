@@ -1,19 +1,54 @@
 #Where to define the routes for the application
 from views.auth.login_view import login_view
 from views.auth.register_view import register_view
+from views.client.client_view import client_view
+from widgets.snackbar_design import modern_snackbar
 
 def setup_routes(page):
-    # Initialize routes dictionary
-    routes = {
-        "/login": login_view(page),
-        "/register": register_view(page)
-    }
+    # Inicializar session_data si no existe
+    if not hasattr(page, "session_data"):
+        page.session_data = {}
 
     def route_change(route):
         # Clear current view
         page.controls.clear()
-        # Add the new view based on route
-        page.add(routes.get(route.route, login_view(page)))
+        
+        # Imprimir información de depuración
+        print(f"Cambiando a ruta: {route.route}")
+        print(f"Session data: {page.session_data}")
+        
+        # Verificar rutas protegidas
+        if route.route == "/cliente" and not page.session_data.get("user"):
+            # Redirigir a login si intenta acceder a client sin iniciar sesión
+            print("Redirigiendo a login: usuario no autenticado")
+            page.go("/login")
+            page.snackbar = modern_snackbar(
+                message="Debes iniciar sesión para acceder a esta página",
+                message_type="warning",
+                duration=3000
+            )
+            page.update()
+            return
+            
+        # Cargar la vista correspondiente
+        try:
+            if route.route == "/login":
+                page.add(login_view(page))
+            elif route.route == "/register":
+                page.add(register_view(page))
+            elif route.route == "/cliente":
+                print("Cargando vista de cliente")
+                view = client_view(page)
+                print(f"Vista de cliente generada: {type(view)}")
+                page.add(view)
+            else:
+                # Ruta por defecto
+                page.add(login_view(page))
+        except Exception as e:
+            print(f"Error al cargar la vista: {e}")
+            import traceback
+            traceback.print_exc()
+            
         page.update()
 
     page.on_route_change = route_change
