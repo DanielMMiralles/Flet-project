@@ -24,19 +24,6 @@ def main(page: ft.Page):
 
     page.assets_dir = "assets"
 
-    # Verificar la versión de Flet para determinar la propiedad correcta para AppBar
-    try:
-        # Intentar acceder a la propiedad app_bar
-        test_appbar = page.app_bar
-        print("Esta versión de Flet usa page.app_bar")
-    except:
-        try:
-            # Intentar acceder a la propiedad appbar
-            test_appbar = page.appbar
-            print("Esta versión de Flet usa page.appbar")
-        except:
-            print("No se pudo determinar la propiedad correcta para AppBar")
-
     setup_routes(page)
     page.go("/login")
 

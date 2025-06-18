@@ -60,15 +60,18 @@ def authenticate_user(username, password, role):
     user_without_role = cursor.fetchone()
     
     if user_without_role:
-        print(f"Usuario encontrado con credenciales correctas. Rol en la BD: {user_without_role['rol']}, Rol proporcionado: {role}")
+        db_role = user_without_role['rol'].lower()
+        input_role = role.lower()
+        print(f"Usuario encontrado con credenciales correctas. Rol en la BD: {db_role}, Rol proporcionado: {input_role}")
+        
+        # Comparar roles ignorando mayúsculas/minúsculas
+        if db_role == input_role:
+            conn.close()
+            return user_without_role
     
-    # Ahora ejecutar la consulta completa con el rol
-    cursor.execute("SELECT * FROM Usuarios WHERE usuario = ? AND password = ? AND rol = ?", 
-                  (username, password, role))
-    user = cursor.fetchone()
-    
+    # Si llegamos aquí, es porque no coinciden los roles o no se encontró el usuario
     conn.close()
-    return user
+    return None
 
 def register_user(username, password, role):
     conn = get_db_connection()

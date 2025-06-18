@@ -14,6 +14,9 @@ def setup_routes(page):
         # Clear current view
         page.controls.clear()
         
+        # Limpiar AppBar anterior si existe
+        page.appbar = None
+        
         # Imprimir información de depuración
         print(f"Cambiando a ruta: {route.route}")
         print(f"Session data: {page.session_data}")
@@ -24,10 +27,11 @@ def setup_routes(page):
             print("Redirigiendo a login: usuario no autenticado")
             page.go("/login")
             page.snackbar = modern_snackbar(
-                message="Debes iniciar sesión para acceder a esta página",
-                message_type="warning",
-                duration=3000
+                "Debes iniciar sesión para acceder a esta página",
+                "warning",
+                3000
             )
+            page.open(page.snackbar)
             page.update()
             return
             

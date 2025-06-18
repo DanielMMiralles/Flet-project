@@ -1,70 +1,85 @@
 import flet as ft
+import os
 from widgets.app_bar import app_bar
 from widgets.page_footer import page_footer
-from widgets.client_widgets.product_carousel import product_carousel
+from widgets.client_widgets.product_carousel import products_carousel_view
 from widgets.client_widgets.client_request_preview import client_request_preview
 from services.product_service import get_products
 from services.client_service import create_request, get_client_by_user_id
+from utils.database import get_db_connection
+
 
 def client_view(page: ft.Page):
     """Vista principal del cliente"""
     
-    # Obtener ID del cliente desde la sesión
-    user_id = page.session_data.get("user", {}).get("id")
-    client = get_client_by_user_id(user_id) if user_id else None
-    client_id = client.id if client else 1  # Usar ID 1 como fallback
+    # Obtener nombre de usuario y rol desde la sesión
+    username = page.session_data.get("user", "Usuario")
+    role = page.session_data.get("role", "cliente").lower()
     
-    # Guardar ID del cliente en la sesión
-    page.session_data["client_id"] = client_id
+    # Asignar el AppBar a la página
+    page.appbar = app_bar(page, role, username)
     
-    # Función para manejar la selección de un producto
-    def handle_product_select(product):
-        # Mostrar vista previa del producto
-        preview = client_request_preview(
-            page=page,
-            product=product,
-            on_submit=handle_request_submit
-        )
-    
-    # Función para manejar el envío de una solicitud
-    def handle_request_submit(product, request_data):
-        # Crear solicitud en la base de datos
-        success = create_request(
-            client_id=request_data["client_id"],
-            product_id=request_data["product_id"],
-            details=request_data["details"],
-            desired_date=request_data["desired_date"]
-        )
-        
-        return success
-    
-    # Obtener productos
-    products = get_products()
-    
-    # Crear carrusel de productos
-    carousel = product_carousel(page, products, on_select=handle_product_select)
+    # Guardar ID de cliente en la sesión (valor por defecto = 1)
+    page.session_data["client_id"] = 1
     
     # Contenido principal
     content = ft.Column(
         controls=[
-            # Bienvenida
+            # Encabezado elegante
             ft.Container(
                 content=ft.Column(
                     controls=[
-                        ft.Text("Bienvenido a FLATICOM", size=32, weight="bold", color=ft.Colors.WHITE),
-                        ft.Text("Seleccione un producto para comenzar", size=16, color=ft.Colors.WHITE)
+                        ft.Row(
+                            controls=[
+                                ft.Icon(
+                                    ft.Icons.DASHBOARD_CUSTOMIZE_ROUNDED,
+                                    size=36,
+                                    color=ft.Colors.WHITE
+                                ),
+                                ft.Text(
+                                    "Catálogo de Soluciones",
+                                    size=28,
+                                    weight="bold",
+                                    color=ft.Colors.WHITE
+                                )
+                            ],
+                            alignment=ft.MainAxisAlignment.CENTER,
+                            spacing=10
+                        ),
+                        ft.Container(
+                            content=ft.Text(
+                                "Seleccione un producto para ver detalles y enviar una solicitud",
+                                size=14,
+                                color=ft.Colors.WHITE70,
+                                text_align=ft.TextAlign.CENTER
+                            ),
+                            margin=ft.margin.only(top=5)
+                        )
                     ],
-                    spacing=10
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    spacing=5
                 ),
-                padding=20,
+                padding=ft.padding.symmetric(vertical=25, horizontal=20),
                 margin=ft.margin.only(bottom=20),
-                border_radius=10,
-                bgcolor=ft.Colors.BLUE,
-                width=page.width
+                border_radius=15,
+                gradient=ft.LinearGradient(
+                    begin=ft.alignment.top_left,
+                    end=ft.alignment.bottom_right,
+                    colors=[
+                        ft.Colors.BLUE_700,
+                        ft.Colors.INDIGO_900
+                    ]
+                ),
+                shadow=ft.BoxShadow(
+                    spread_radius=1,
+                    blur_radius=15,
+                    color=ft.Colors.with_opacity(0.3, ft.Colors.BLACK),
+                    offset=ft.Offset(0, 5)
+                )
             ),
             
             # Carrusel de productos
-            carousel,
+            products_carousel_view(page),
             
             # Espacio adicional
             ft.Container(height=50)
@@ -76,7 +91,6 @@ def client_view(page: ft.Page):
     # Estructura de la página
     return ft.Column(
         controls=[
-            app_bar(page),  # Barra superior
             ft.Container(
                 content=content,
                 padding=20,

@@ -1,4 +1,5 @@
 import flet as ft
+from services.request_service import get_pending_requests
 
 def admin_navigation_panel(page: ft.Page, current_view: str = "dashboard", on_view_change=None):
     """
@@ -9,6 +10,10 @@ def admin_navigation_panel(page: ft.Page, current_view: str = "dashboard", on_vi
         current_view: Vista actual para resaltar la opción seleccionada
         on_view_change: Función a llamar cuando se cambia de vista
     """
+    
+    # Obtener el número de solicitudes pendientes
+    pending_requests = get_pending_requests()
+    pending_count = len(pending_requests)
     
     # Función para crear un elemento de navegación
     def nav_item(icon, label, view_name, badge_count=None):
@@ -34,9 +39,16 @@ def admin_navigation_panel(page: ft.Page, current_view: str = "dashboard", on_vi
         
         # Añadir badge si es necesario
         if badge_count is not None and badge_count > 0:
+            # Determinar el color del badge según la cantidad
+            badge_color = ft.Colors.RED_500
+            if badge_count < 3:
+                badge_color = ft.Colors.ORANGE
+            elif badge_count >= 10:
+                badge_color = ft.Colors.RED_900
+            
             controls.append(ft.Container(
                 content=ft.Text(str(badge_count), size=14, color=ft.Colors.WHITE),
-                bgcolor=ft.Colors.RED_500,
+                bgcolor=badge_color,
                 width=28,
                 height=28,
                 border_radius=14,
@@ -128,7 +140,7 @@ def admin_navigation_panel(page: ft.Page, current_view: str = "dashboard", on_vi
                     controls=[
                         ft.Text("PRINCIPAL", size=12, color=ft.Colors.GREY_500, weight="bold"),
                         nav_item(ft.Icons.DASHBOARD_ROUNDED, "Visión Global", "dashboard", None),
-                        nav_item(ft.Icons.PENDING_ACTIONS, "Solicitudes Pendientes", "requests", 5),
+                        nav_item(ft.Icons.PENDING_ACTIONS, "Solicitudes Pendientes", "requests", pending_count),
                         nav_item(ft.Icons.GROUPS, "Gestión de Equipos", "teams", None),
                         nav_item(ft.Icons.TRENDING_UP, "Progreso y Avances", "progress", None),
                     ],

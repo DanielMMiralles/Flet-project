@@ -1,9 +1,9 @@
 import flet as ft
+import time
 from models.product import Product
 from widgets.snackbar_design import modern_snackbar
 
 def client_request_preview(page: ft.Page, product: Product, on_close=None, on_submit=None):
-    # Obtener la ruta base del proyecto
     """
     Componente de vista previa de solicitud que se desliza desde el lado derecho.
     
@@ -21,12 +21,9 @@ def client_request_preview(page: ft.Page, product: Product, on_close=None, on_su
         overlay.visible = False
         page.update()
 
-        # Llamar a la función de cierre después de la animación
-        def after_animation():
-            if on_close:
-                on_close()
-
-        page.after(500, after_animation)
+        # Llamar a la función de cierre si se proporcionó
+        if on_close:
+            on_close()
 
     # Overlay para oscurecer y desenfocar el fondo
     overlay = ft.Container(
@@ -36,6 +33,30 @@ def client_request_preview(page: ft.Page, product: Product, on_close=None, on_su
         visible=False,
         on_click=lambda _: close_preview()
     )
+    
+    # Crear campos con referencias como objetos Control.ref, no como strings
+    details_field_ref = ft.Ref[ft.TextField]()
+    day_dropdown_ref = ft.Ref[ft.Dropdown]()
+    month_dropdown_ref = ft.Ref[ft.Dropdown]()
+    year_dropdown_ref = ft.Ref[ft.Dropdown]()
+    error_message_ref = ft.Ref[ft.Container]()
+    
+    # Mapeo de meses a números
+    month_mapping = {
+        "Enero": "01",
+        "Febrero": "02",
+        "Marzo": "03",
+        "Abril": "04",
+        "Mayo": "05",
+        "Junio": "06",
+        "Julio": "07",
+        "Agosto": "08",
+        "Septiembre": "09",
+        "Octubre": "10",
+        "Noviembre": "11",
+        "Diciembre": "12"
+    }
+    
     # Crear el contenido del panel con scroll
     content_column = ft.Column(
         controls=[
@@ -129,7 +150,7 @@ def client_request_preview(page: ft.Page, product: Product, on_close=None, on_su
             # Formulario de solicitud - Color de texto cambiado a negro
             ft.Text("Detalles adicionales", size=16, weight="bold", color=ft.Colors.BLACK),
             ft.TextField(
-                ref="details_field",
+                ref=details_field_ref,
                 hint_text="Describe tus necesidades específicas...",
                 multiline=True,
                 min_lines=3,
@@ -147,7 +168,7 @@ def client_request_preview(page: ft.Page, product: Product, on_close=None, on_su
             ft.Row(
                 controls=[
                     ft.Dropdown(
-                        ref="day_dropdown",
+                        ref=day_dropdown_ref,
                         width=100,
                         label="Día",
                         options=[ft.dropdown.Option(str(i)) for i in range(1, 32)],
@@ -156,29 +177,16 @@ def client_request_preview(page: ft.Page, product: Product, on_close=None, on_su
                         enable_filter= True
                     ),
                     ft.Dropdown(
-                        ref="month_dropdown",
+                        ref=month_dropdown_ref,
                         width=120,
                         label="Mes",
-                        options=[
-                            ft.dropdown.Option("Enero", value="01"),
-                            ft.dropdown.Option("Febrero", value="02"),
-                            ft.dropdown.Option("Marzo", value="03"),
-                            ft.dropdown.Option("Abril", value="04"),
-                            ft.dropdown.Option("Mayo", value="05"),
-                            ft.dropdown.Option("Junio", value="06"),
-                            ft.dropdown.Option("Julio", value="07"),
-                            ft.dropdown.Option("Agosto", value="08"),
-                            ft.dropdown.Option("Septiembre", value="09"),
-                            ft.dropdown.Option("Octubre", value="10"),
-                            ft.dropdown.Option("Noviembre", value="11"),
-                            ft.dropdown.Option("Diciembre", value="12")
-                        ],
+                        options=[ft.dropdown.Option(mes) for mes in month_mapping.keys()],
                         color=ft.Colors.BLACK,
                         menu_height= 200,
                         enable_filter= True
                     ),
                     ft.Dropdown(
-                        ref="year_dropdown",
+                        ref=year_dropdown_ref,
                         width=100,
                         label="Año",
                         options=[ft.dropdown.Option(str(i)) for i in range(2023, 2031)],
@@ -192,7 +200,7 @@ def client_request_preview(page: ft.Page, product: Product, on_close=None, on_su
             
             # Mensaje de error (inicialmente oculto)
             ft.Container(
-                ref="error_message",
+                ref=error_message_ref,
                 content=ft.Text("Por favor complete todos los campos", color=ft.Colors.RED),
                 visible=False,
                 margin=ft.margin.only(top=10)
@@ -275,25 +283,14 @@ def client_request_preview(page: ft.Page, product: Product, on_close=None, on_su
         )
     )
     
-    # Función para cerrar la vista previa
-    def close_preview():
-        # Animar el panel para que salga de la pantalla
-        side_panel.right = page.width
-        overlay.visible = False
-        page.update()
-        
-        # Llamar a la función de cierre si se proporcionó
-        if on_close:
-            on_close()
-    
     # Función para validar y enviar la solicitud
     def validate_and_submit():
         # Obtener referencias a los campos
-        details_field = page.get_control("details_field")
-        day_dropdown = page.get_control("day_dropdown")
-        month_dropdown = page.get_control("month_dropdown")
-        year_dropdown = page.get_control("year_dropdown")
-        error_message = page.get_control("error_message")
+        details_field = details_field_ref.current
+        day_dropdown = day_dropdown_ref.current
+        month_dropdown = month_dropdown_ref.current
+        year_dropdown = year_dropdown_ref.current
+        error_message = error_message_ref.current
         
         # Validar que todos los campos estén completos
         if not details_field.value or not day_dropdown.value or not month_dropdown.value or not year_dropdown.value:
@@ -304,8 +301,9 @@ def client_request_preview(page: ft.Page, product: Product, on_close=None, on_su
         # Ocultar mensaje de error si todo está bien
         error_message.visible = False
         
-        # Formatear fecha
-        desired_date = f"{year_dropdown.value}-{month_dropdown.value}-{day_dropdown.value.zfill(2)}"
+        # Formatear fecha - Usar el mapeo para obtener el número del mes
+        month_number = month_mapping.get(month_dropdown.value, "01")
+        desired_date = f"{year_dropdown.value}-{month_number}-{day_dropdown.value.zfill(2)}"
         
         # Crear datos de la solicitud
         request_data = {
@@ -316,11 +314,12 @@ def client_request_preview(page: ft.Page, product: Product, on_close=None, on_su
         }
         
         # Mostrar indicador de carga
-        page.snackbar = ft.SnackBar(
-            content=ft.Text("Enviando solicitud..."),
-            bgcolor=ft.Colors.BLUE
+        page.snackbar = modern_snackbar(
+            "Enviando solicitud...",
+            "info",
+            3000
         )
-        page.snackbar.open = True
+        page.open(page.snackbar)
         page.update()
         
         # Llamar a la función de envío si se proporcionó
@@ -329,23 +328,26 @@ def client_request_preview(page: ft.Page, product: Product, on_close=None, on_su
             
             # Mostrar mensaje de éxito o error
             if success:
-                page.snackbar = ft.SnackBar(
-                    content=ft.Text("Solicitud enviada correctamente"),
-                    bgcolor=ft.Colors.GREEN
+                page.snackbar = modern_snackbar(
+                    "Solicitud enviada correctamente",
+                    "success",
+                    3000
                 )
             else:
-                page.snackbar = ft.SnackBar(
-                    content=ft.Text("Error al enviar la solicitud"),
-                    bgcolor=ft.Colors.RED
+                page.snackbar = modern_snackbar(
+                    "Error al enviar la solicitud",
+                    "error",
+                    3000
                 )
-            page.snackbar.open = True
+            page.open(page.snackbar)
             page.update()
         else:
-            page.snackbar = ft.SnackBar(
-                content=ft.Text("Error al enviar la solicitud"),
-                bgcolor=ft.Colors.RED
+            page.snackbar = modern_snackbar(
+                "Error al enviar la solicitud",
+                "error",
+                3000
             )
-            page.snackbar.open = True
+            page.open(page.snackbar)
             page.update()
         
         # Cerrar la vista previa
@@ -363,7 +365,7 @@ def client_request_preview(page: ft.Page, product: Product, on_close=None, on_su
         overlay.visible = True
 
         # Animar el panel para que entre en la pantalla
-        side_panel.animate_position = ft.Animation(500, ft.AnimationCurve.EASE_IN_TO_LINEAR)  # Añadir esta línea
+        side_panel.animate_position = ft.Animation(500, ft.AnimationCurve.EASE_IN_TO_LINEAR)
         side_panel.right = 0
 
         # Actualizar la página

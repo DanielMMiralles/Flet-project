@@ -22,6 +22,10 @@ def requests_view(page: ft.Page):
         nonlocal pending_requests
         pending_requests = get_pending_requests()
         requests_list.controls = [create_request_card(request) for request in pending_requests]
+        
+        # Actualizar el mensaje de no hay solicitudes
+        no_requests_message.visible = len(pending_requests) == 0
+        
         page.update()
     
     # Función para ver detalles de una solicitud
@@ -158,7 +162,7 @@ def requests_view(page: ft.Page):
         if success:
             # Mostrar mensaje de éxito
             page.snackbar = modern_snackbar(
-                " Solicitud aprobada",
+                "Solicitud aprobada correctamente",
                 "success",
                 3000
             )

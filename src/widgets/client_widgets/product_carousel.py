@@ -4,6 +4,7 @@ from models.product import Product
 from services.product_service import get_products
 from widgets.snackbar_design import modern_snackbar
 from widgets.client_widgets.client_request_preview import client_request_preview
+from services.client_service import create_request
 
 def products_carousel_view(page: ft.Page, products=None):
     """Vista de carrusel de productos con diseño moderno en tema oscuro"""
@@ -41,7 +42,7 @@ def products_carousel_view(page: ft.Page, products=None):
         
         # Función para manejar la selección de tarjetas
         def select_product(e, product_id):
-            nonlocal selected_product_id
+            nonlocal selected_product_id, selected_product
             # Actualizar el producto seleccionado
             selected_product_id = product_id
             selected_product = next((p for p in products if p.id == product_id), None)
@@ -69,23 +70,35 @@ def products_carousel_view(page: ft.Page, products=None):
             
             # Mostrar el botón de enviar solicitud
             send_request_btn.visible = True
-            send_request_btn.text = f"Enviar solicitud para {next((p.name for p in products if p.id == selected_product_id), 'producto')}"
+            if selected_product:
+                send_request_btn.text = f"Enviar solicitud para {selected_product.name}"
+            else:
+                send_request_btn.text = "Enviar solicitud"
             
-            send_request_btn.on_click = lambda e: show_request_preview(e, selected_product)
             page.update()
 
+        # Función para manejar el envío de solicitud
+        def handle_submit(product, request_data):
+            # Crear solicitud en la base de datos
+            success = create_request(
+                client_id=request_data["client_id"],
+                product_id=request_data["product_id"],
+                details=request_data["details"],
+                desired_date=request_data["desired_date"]
+            )
+            
+            return success
+
         # Función para mostrar la vista previa de solicitud
-        def show_request_preview(e, product):
-            if product:
+        def show_request_preview(e):
+            nonlocal selected_product
+            if selected_product:
+                # Mostrar la vista previa
                 client_request_preview(
-                    page, 
-                    product,
-                    on_close=lambda: print(f"Vista previa cerrada para {product.name}"),
-                    on_submit=lambda p: modern_snackbar(
-                        f"Solicitud enviada para {p.name}",
-                        "info",
-                        3000
-                    )
+                    page=page, 
+                    product=selected_product,
+                    on_close=lambda: print(f"Vista previa cerrada para {selected_product.name}"),
+                    on_submit=handle_submit
                 )
             else:
                 page.snackbar = modern_snackbar(
@@ -93,6 +106,7 @@ def products_carousel_view(page: ft.Page, products=None):
                     "warning",
                     3000
                 )
+                page.open(page.snackbar)
 
         # Crear el botón de enviar solicitud
         send_request_btn = ft.ElevatedButton(
@@ -104,7 +118,8 @@ def products_carousel_view(page: ft.Page, products=None):
                 bgcolor=ft.Colors.BLUE,
                 elevation=5,
                 padding=15
-            )
+            ),
+            on_click=show_request_preview
         )    
 
         # Función para crear tarjetas de producto
@@ -239,11 +254,6 @@ def products_carousel_view(page: ft.Page, products=None):
                 spacing=25,
                 vertical_alignment=ft.CrossAxisAlignment.START,
                 expand=True
-            )
-            # Snackbar para confirmar envío
-            page.snackbar = ft.SnackBar(
-                content=ft.Text("Solicitud enviada correctamente"),
-                action="OK"
             )
             
             # Contenedor principal con título

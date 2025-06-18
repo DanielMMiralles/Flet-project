@@ -152,9 +152,10 @@ def get_role_specific_actions(page: ft.Page, user_role: str):
 def logout(page: ft.Page):
     page.session_data.clear()
     page.snackbar = modern_snackbar(
-        message="Sesión cerrada correctamente", 
-        message_type="success",
-        duration=3000
+        "Sesión cerrada correctamente", 
+        "success",
+        3000
     )
+    page.open(page.snackbar)
     page.go("/login")
     page.update()

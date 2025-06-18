@@ -77,7 +77,18 @@ def insert_sample_data():
             (1, "Sistema de Gestión", 30, 2, "/assets/productos/sistema.jpg", "Sistema de gestión empresarial completo", "activo", 1),
             (2, "App Móvil", 45, 2, "/assets/productos/app.jpg", "Aplicación móvil multiplataforma", "pendiente", 1),
             (3, "Plataforma E-learning", 60, 3, "/assets/productos/elearning.jpg", "Plataforma de aprendizaje en línea", "completado", 2),
-            (4, "Sistema de Inventario", 20, 1, "/assets/productos/inventario.jpg", "Sistema de control de inventario", "propuesta", 2)
+            (4, "Sistema de Inventario", 20, 1, "/assets/productos/inventario.jpg", "Sistema de control de inventario", "propuesta", 2),
+            (5, "Tienda Online", 40, 2, "/assets/productos/tienda.jpg", "Tienda virtual con carrito de compras", "activo", 1),
+            (6, "CRM Empresarial", 50, 3, "/assets/productos/crm.jpg", "Sistema de gestión de relaciones con clientes", "activo", 2),
+            (7, "Sistema de Recursos Humanos", 35, 2, "/assets/productos/rh.jpg", "Gestión integral de recursos humanos", "propuesta", 1),
+            (8, "Plataforma de Análisis", 25, 1, "/assets/productos/analisis.jpg", "Herramienta de análisis de datos", "pendiente", 2),
+            (9, "App de Finanzas", 30, 2, "/assets/productos/finanzas.jpg", "Aplicación para gestión financiera", "activo", 1),
+            (10, "Sistema de Reservas", 20, 1, "/assets/productos/reservas.jpg", "Plataforma de reservas online", "completado", 2),
+            (11, "Portal Corporativo", 40, 2, "/assets/productos/portal.jpg", "Portal web corporativo personalizable", "activo", 1),
+            (12, "Gestor Documental", 30, 2, "/assets/productos/documentos.jpg", "Sistema de gestión documental", "pendiente", 2),
+            (13, "Plataforma de Marketing", 45, 3, "/assets/productos/marketing.jpg", "Herramientas de marketing digital", "propuesta", 1),
+            (14, "Sistema de Logística", 50, 3, "/assets/productos/logistica.jpg", "Gestión de logística y distribución", "activo", 2),
+            (15, "App de Productividad", 25, 1, "/assets/productos/productividad.jpg", "Aplicación para mejorar la productividad", "pendiente", 1)
         ]
         cursor.executemany(
             "INSERT INTO Producto (id, nombre, dias, cantidad_ing, imagen, descripcion, status, client_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
@@ -91,7 +102,9 @@ def insert_sample_data():
             (1, 1, 1, "2023-05-15", "Necesito un sistema de gestión para mi empresa", "aprobada"),
             (2, 1, 2, "2023-06-20", "Requiero una app móvil para mi negocio", "pendiente"),
             (3, 2, 3, "2023-03-10", "Necesitamos una plataforma de e-learning", "aprobada"),
-            (4, 2, 4, "2023-07-05", "Sistema de inventario para nuestra tienda", "pendiente")
+            (4, 2, 4, "2023-07-05", "Sistema de inventario para nuestra tienda", "pendiente"),
+            (5, 1, 5, "2023-07-10", "Necesitamos una tienda online completa", "pendiente"),
+            (6, 2, 8, "2023-07-15", "Herramienta para análisis de datos de ventas", "pendiente")
         ]
         cursor.executemany(
             "INSERT INTO Solicitudes (id, id_cliente, id_producto, fecha_solicitud, detalles, estado) VALUES (?, ?, ?, ?, ?, ?)",
@@ -103,7 +116,10 @@ def insert_sample_data():
         asignaciones = [
             (1, 1, 1, "2023-05-20", None),  # Juan Pérez asignado al Sistema de Gestión (activo)
             (2, 2, 1, "2023-05-20", None),  # Ana Gómez asignada al Sistema de Gestión (activo)
-            (3, 3, 3, "2023-03-15", "2023-05-10")  # Carlos Rodríguez asignado a la Plataforma E-learning (completado)
+            (3, 3, 3, "2023-03-15", "2023-05-10"),  # Carlos Rodríguez asignado a la Plataforma E-learning (completado)
+            (4, 1, 5, "2023-07-12", None),  # Juan Pérez asignado a la Tienda Online (activo)
+            (5, 2, 6, "2023-06-15", None),  # Ana Gómez asignada al CRM Empresarial (activo)
+            (6, 3, 10, "2023-04-10", "2023-05-01")  # Carlos Rodríguez asignado al Sistema de Reservas (completado)
         ]
         cursor.executemany(
             "INSERT INTO Asignaciones (id, id_ingeniero, id_producto, fecha_inicio, fecha_fin) VALUES (?, ?, ?, ?, ?)",
@@ -120,7 +136,11 @@ def insert_sample_data():
             (5, 2, 1, "2023-06-15", "Implementación de la interfaz", 50),
             (6, 3, 3, "2023-03-20", "Inicio del desarrollo", 20),
             (7, 3, 3, "2023-04-10", "Desarrollo de módulos principales", 50),
-            (8, 3, 3, "2023-05-05", "Finalización del proyecto", 100)
+            (8, 3, 3, "2023-05-05", "Finalización del proyecto", 100),
+            (9, 1, 5, "2023-07-15", "Configuración inicial de la tienda", 15),
+            (10, 2, 6, "2023-06-20", "Desarrollo de módulos de clientes", 30),
+            (11, 3, 10, "2023-04-15", "Desarrollo del sistema de reservas", 40),
+            (12, 3, 10, "2023-04-25", "Finalización del sistema de reservas", 100)
         ]
         cursor.executemany(
             "INSERT INTO Avances (id, id_producto, id_ingeniero, fecha, descripcion, porcentaje) VALUES (?, ?, ?, ?, ?, ?)",

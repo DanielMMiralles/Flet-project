@@ -59,20 +59,20 @@ def modern_snackbar(
                 begin=ft.alignment.top_left,
                 end=ft.alignment.bottom_right,
                 colors=[
-                    ft.Colors.with_opacity(0.3, config["bgcolor"]),
+                    ft.Colors.with_opacity(0.6, config["bgcolor"]),
                     config["bgcolor"]
                 ]
             ),
             shadow=ft.BoxShadow(
                 spread_radius=1,
                 blur_radius=15,
-                color=ft.Colors.with_opacity(0.3, ft.Colors.BLACK),
+                color=ft.Colors.with_opacity(0.8, ft.Colors.BLACK),
                 offset=ft.Offset(0, 3)
             ),
             animate=ft.Animation(300, ft.AnimationCurve.EASE_OUT)
         ),
         bgcolor=ft.Colors.TRANSPARENT,
-        elevation=0,
+        elevation=10,
         behavior=ft.SnackBarBehavior.FLOATING,
         shape=ft.RoundedRectangleBorder(radius=12),
         padding=ft.padding.all(0),

@@ -18,10 +18,11 @@ def login_view(page: ft.Page):
     def validate_login(user, password, role):
         if not user or not password or not role:
             page.snackbar = modern_snackbar(
-                message="Por favor, completa todos los campos.",
-                message_type="error",
-                duration=3000
+                "Por favor, completa todos los campos.",
+                "error",
+                3000
             )
+            page.open(page.snackbar)
             page.update()
             return
 
@@ -39,10 +40,11 @@ def login_view(page: ft.Page):
             page.go(target_route)
         else:
             page.snackbar = modern_snackbar(
-                message="Credenciales incorrectas. Inténtalo de nuevo.",
-                message_type="error",
-                duration=3000
+                "Credenciales incorrectas. Inténtalo de nuevo.",
+                "error",
+                3000
             )
+            page.open(page.snackbar)
             page.update()
 
     user_input = ft.TextField(label="Username", autofocus=True)
@@ -70,4 +72,3 @@ def login_view(page: ft.Page):
         ),
         title="Iniciar sesión"
     )
-
