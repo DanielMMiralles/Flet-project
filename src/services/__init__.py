@@ -1,0 +1,6 @@
+# Importar todos los servicios
+from services.product_service import get_products
+from services.dashboard_service import get_dashboard_data, get_pending_requests, get_available_engineers, get_project_progress
+from services.request_service import get_all_requests, update_request_status, create_request
+from services.engineer_service import get_all_engineers, get_available_engineers, get_engineer_by_id, assign_engineer_to_project, complete_engineer_assignment, get_engineers_by_project
+from services.progress_service import add_progress_entry, get_all_project_progress

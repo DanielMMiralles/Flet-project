@@ -1,7 +1,11 @@
 import flet as ft
 from app.routes import setup_routes
+from utils.init_app import initialize_application
 
 def main(page: ft.Page):
+    # Inicializar la aplicación (configurar base de datos, etc.)
+    initialize_application()
+    
     page.title = "Flet App"
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER

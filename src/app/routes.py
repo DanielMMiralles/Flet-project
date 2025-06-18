@@ -3,6 +3,7 @@ from views.auth.login_view import login_view
 from views.auth.register_view import register_view
 from views.client.client_view import client_view
 from widgets.snackbar_design import modern_snackbar
+from views.admin.admin_view import admin_view
 
 def setup_routes(page):
     # Inicializar session_data si no existe
@@ -41,6 +42,9 @@ def setup_routes(page):
                 view = client_view(page)
                 print(f"Vista de cliente generada: {type(view)}")
                 page.add(view)
+            elif route.route == "/admin":
+                # Aquí puedes cargar la vista de administrador
+                page.add(admin_view(page))
             else:
                 # Ruta por defecto
                 page.add(login_view(page))
