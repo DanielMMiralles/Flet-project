@@ -9,6 +9,53 @@ def admin_view(page: ft.Page):
     # Estado actual de la vista
     current_view = "dashboard"
     
+    # Mostrar snackbars de bienvenida al cargar la vista
+    def show_welcome_snackbars():
+        from widgets.snackbar_design import modern_snackbar
+        
+        # Snackbar de bienvenida
+        page.snackbar = modern_snackbar(
+            "¡Bienvenido al Panel de Administración!",
+            "success",
+            3000
+        )
+        page.open(page.snackbar)
+        page.update()
+        
+        # Esperar y mostrar segundo snackbar con estadísticas
+        def show_stats_snackbar():
+            from services.request_service import get_pending_requests
+            from services.product_service import get_approved_products
+            from services.assignment_service import get_project_engineers
+            
+            # Obtener estadísticas
+            pending_requests = len(get_pending_requests())
+            projects = get_approved_products()
+            unassigned_projects = 0
+            
+            for project in projects:
+                engineers = get_project_engineers(project["id"])
+                if not engineers or len(engineers) == 0:
+                    unassigned_projects += 1
+            
+            stats_message = f"📊 {pending_requests} solicitudes pendientes • {unassigned_projects} proyectos sin equipo"
+            
+            page.snackbar = modern_snackbar(
+                stats_message,
+                "info",
+                4000
+            )
+            page.open(page.snackbar)
+            page.update()
+        
+        # Programar el segundo snackbar después de 3.5 segundos
+        import threading
+        timer = threading.Timer(3.5, show_stats_snackbar)
+        timer.start()
+    
+    # Mostrar snackbars de bienvenida
+    show_welcome_snackbars()
+    
     # Contenedor para el contenido dinámico con animación
     content_area = ft.Container(
         content=dashboard_view(page),  # Vista inicial
@@ -42,18 +89,32 @@ def admin_view(page: ft.Page):
                 from widgets.admin_widgets.teams_view import teams_view
                 content_area.content = teams_view(page)
             elif view_name == "progress":
-                content_area.content = ft.Text("Vista de Progreso y Avances", size=30, color=ft.Colors.GREY_400)
+                from widgets.admin_widgets.progress_view import progress_view
+                content_area.content = progress_view(page)
+            elif view_name == "settings":
+                from widgets.admin_widgets.tools_view import settings_view
+                content_area.content = settings_view(page)
+            elif view_name == "help":
+                from widgets.admin_widgets.tools_view import help_view
+                content_area.content = help_view(page)
+            elif view_name == "stats":
+                from widgets.admin_widgets.tools_view import stats_view
+                content_area.content = stats_view(page)
+            elif view_name == "users":
+                from widgets.admin_widgets.tools_view import users_view
+                content_area.content = users_view(page)
+            elif view_name == "files":
+                from widgets.admin_widgets.tools_view import files_view
+                content_area.content = files_view(page)
+            elif view_name == "messages":
+                from widgets.admin_widgets.tools_view import messages_view
+                content_area.content = messages_view(page)
             else:
                 # Vista por defecto o placeholder
                 content_area.content = ft.Text(f"Vista {view_name} en construcción", size=30, color=ft.Colors.GREY_400)
             
-            # Recrear el panel de navegación con la nueva vista seleccionada
-            old_nav_panel = nav_panel
-            nav_panel = admin_navigation_panel(page, current_view, change_view)
-            
-            # Reemplazar el panel antiguo con el nuevo en el layout
-            layout_idx = layout.controls.index(old_nav_panel)
-            layout.controls[layout_idx] = nav_panel
+            # Solo actualizar el contenido sin recrear el panel de navegación
+            # El panel se mantiene igual, solo cambia la selección visual
             
             # Mostrar el contenido inmediatamente
             content_area.opacity = 1

@@ -1,6 +1,6 @@
 import flet as ft
-from services.product_service import get_approved_products, get_product_by_id
-from services.engineer_service import get_available_engineers, get_engineer_by_id
+from services.product_service import get_approved_products
+from services.engineer_service import get_available_engineers
 from services.assignment_service import assign_engineers_to_project, get_project_engineers, remove_engineer_from_project
 from services.progress_service import get_project_progress
 from widgets.snackbar_design import modern_snackbar
@@ -107,7 +107,7 @@ def teams_view(page: ft.Page):
         if engineers_needed <= 0:
             page.snackbar = modern_snackbar(
                 "Este proyecto ya tiene todos los ingenieros asignados",
-                "info",
+                "warning",
                 3000
             )
             page.open(page.snackbar)
@@ -163,7 +163,7 @@ def teams_view(page: ft.Page):
             success = assign_engineers_to_project(project_id, selected_engineers)
             
             if success:
-                # FORZAR cierre completo del diálogo (solución que funciona)
+                # FORZAR cierre completo del diálogo 
                 if hasattr(page, 'dialog') and page.dialog:
                     page.close(page.dialog)
                 page.dialog = None
@@ -902,7 +902,7 @@ def teams_view(page: ft.Page):
             page.dialog = None
             page.update()
         
-        # Crear el diálogo completo y bonito
+        # Crear el diálogo completo
         dialog = ft.AlertDialog(
             title=ft.Text(f"Asignar ingenieros adicionales a {project['name']}"),
             content=ft.Column(

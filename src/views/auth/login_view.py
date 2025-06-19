@@ -9,6 +9,28 @@ from utils.database import authenticate_user
 
 
 def login_view(page: ft.Page):
+    # Función para mostrar pantalla de carga
+    def show_loading_screen():
+        loading_dialog = ft.AlertDialog(
+            content=ft.Container(
+                content=ft.Column(
+                    controls=[
+                        ft.ProgressRing(width=50, height=50, color=ft.Colors.BLUE_ACCENT),
+                        ft.Text("Iniciando sesión...", size=16, text_align=ft.TextAlign.CENTER)
+                    ],
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    spacing=20
+                ),
+                width=200,
+                height=120,
+                alignment=ft.alignment.center
+            ),
+            modal=True
+        )
+        page.dialog = loading_dialog
+        page.open(page.dialog)
+        page.update()
+    
     def login(e):
         user = user_input.value
         password = password_input.value
@@ -27,6 +49,9 @@ def login_view(page: ft.Page):
             return
 
         if authenticate_user(user, password, role):
+            # Mostrar pantalla de carga
+            show_loading_screen()
+            
             # Guardar datos de sesión
             page.session_data['user'] = user
             page.session_data['password'] = password
@@ -34,10 +59,23 @@ def login_view(page: ft.Page):
             
             print(f"Login exitoso. Datos de sesión: {page.session_data}")
             
-            # Redirigir según el rol (asegurarse de que sea minúscula)
-            target_route = f"/{role.lower()}"
-            print(f"Redirigiendo a: {target_route}")
-            page.go(target_route)
+            # Función para cerrar carga y redirigir
+            def complete_login():
+                # Cerrar diálogo de carga
+                if hasattr(page, 'dialog') and page.dialog:
+                    page.close(page.dialog)
+                page.dialog = None
+                page.update()
+                
+                # Redirigir según el rol
+                target_route = f"/{role.lower()}"
+                print(f"Redirigiendo a: {target_route}")
+                page.go(target_route)
+            
+            # Programar cierre después de 1.5 segundos
+            import threading
+            timer = threading.Timer(1.5, complete_login)
+            timer.start()
         else:
             page.snackbar = modern_snackbar(
                 "Credenciales incorrectas. Inténtalo de nuevo.",

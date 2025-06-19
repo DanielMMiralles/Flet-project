@@ -1,5 +1,30 @@
 import flet as ft
 from services.request_service import get_pending_requests
+from widgets.snackbar_design import modern_snackbar
+
+def logout(page: ft.Page):
+    """Función para cerrar sesión del administrador"""
+    # Limpiar datos de sesión
+    if hasattr(page, 'session_data'):
+        page.session_data.clear()
+    
+    # Mostrar snackbar de despedida
+    page.snackbar = modern_snackbar(
+        "Sesión cerrada correctamente. ¡Hasta pronto!",
+        "success",
+        3000
+    )
+    page.open(page.snackbar)
+    
+    # Redirigir al login después de un breve delay
+    import threading
+    def redirect_to_login():
+        import time
+        time.sleep(1)
+        page.go("/login")
+    
+    timer = threading.Timer(1, redirect_to_login)
+    timer.start()
 
 def admin_navigation_panel(page: ft.Page, current_view: str = "dashboard", on_view_change=None):
     """
@@ -14,6 +39,18 @@ def admin_navigation_panel(page: ft.Page, current_view: str = "dashboard", on_vi
     # Obtener el número de solicitudes pendientes
     pending_requests = get_pending_requests()
     pending_count = len(pending_requests)
+    
+    # Diccionario para almacenar referencias a los elementos de navegación
+    nav_items_refs = {}
+    
+    # Función para actualizar la selección visual
+    def update_selection(selected_view):
+        for view_name, container in nav_items_refs.items():
+            if view_name == selected_view:
+                container.bgcolor = ft.Colors.BLUE_GREY_800
+            else:
+                container.bgcolor = ft.Colors.TRANSPARENT
+        page.update()
     
     # Función para crear un elemento de navegación
     def nav_item(icon, label, view_name, badge_count=None):
@@ -58,9 +95,11 @@ def admin_navigation_panel(page: ft.Page, current_view: str = "dashboard", on_vi
         # Función para manejar el clic
         def handle_click(e):
             if on_view_change:
+                # Actualizar selección visual
+                update_selection(view_name)
                 on_view_change(view_name)
         
-        return ft.Container(
+        nav_container = ft.Container(
             content=ft.Row(
                 controls=controls,
                 spacing=15,
@@ -75,6 +114,11 @@ def admin_navigation_panel(page: ft.Page, current_view: str = "dashboard", on_vi
             on_click=handle_click,
             animate=ft.Animation(300, ft.AnimationCurve.FAST_LINEAR_TO_SLOW_EASE_IN)
         )
+        
+        # Guardar referencia del contenedor
+        nav_items_refs[view_name] = nav_container
+        
+        return nav_container
 
     # Encabezado fijo (siempre visible)
     header = ft.Container(
@@ -118,7 +162,8 @@ def admin_navigation_panel(page: ft.Page, current_view: str = "dashboard", on_vi
                 ft.IconButton(
                     icon=ft.Icons.LOGOUT,
                     icon_color=ft.Colors.GREY_400,
-                    tooltip="Cerrar sesión"
+                    tooltip="Cerrar sesión",
+                    on_click=lambda e: logout(page)
                 )
             ],
             spacing=10,
@@ -131,7 +176,7 @@ def admin_navigation_panel(page: ft.Page, current_view: str = "dashboard", on_vi
         width=330
     )
     
-    # Contenido desplazable
+    # Contenido desplazable con scroll persistente
     scrollable_content = ft.Column(
         controls=[
             # Sección principal de navegación
@@ -200,7 +245,8 @@ def admin_navigation_panel(page: ft.Page, current_view: str = "dashboard", on_vi
             )
         ],
         spacing=0,
-        scroll=ft.ScrollMode.AUTO  # Habilitar scroll
+        scroll=ft.ScrollMode.AUTO,
+        auto_scroll=False  # Evitar auto-scroll al inicio
     )
 
     # Crear el panel de navegación con estructura de tres partes
