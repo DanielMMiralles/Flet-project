@@ -78,6 +78,51 @@ def get_product_by_id(product_id: int) -> Product:
         traceback.print_exc()
         return None
 
+def get_approved_products():
+    """Obtiene todos los productos aprobados (proyectos)"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT p.*, c.nombre as cliente_nombre, s.id as solicitud_id
+            FROM Producto p
+            JOIN Solicitudes s ON p.id = s.id_producto
+            JOIN Clientes c ON s.id_cliente = c.id
+            WHERE s.estado = 'aprobada'
+        """)
+        
+        rows = cursor.fetchall()
+        
+        products = []
+        for row in rows:
+            # Verificar si existe la columna estado en la fila
+            try:
+                status = row["estado"]
+            except (IndexError, KeyError):
+                status = "aprobada"
+            
+            product = {
+                "id": row["id"],
+                "name": row["nombre"],
+                "description": row["descripcion"],
+                "days": row["dias"],
+                "engineers": row["cantidad_ing"],
+                "client_name": row["cliente_nombre"],
+                "request_id": row["solicitud_id"],
+                "status": status
+            }
+            products.append(product)
+        
+        conn.close()
+        return products
+    
+    except Exception as e:
+        print(f"Error obteniendo productos aprobados: {e}")
+        import traceback
+        traceback.print_exc()
+        return []
+
 def get_column_names(cursor, table_name):
     """Obtiene los nombres de las columnas de una tabla"""
     cursor.execute(f"PRAGMA table_info({table_name})")

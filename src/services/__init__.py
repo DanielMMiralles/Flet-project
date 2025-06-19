@@ -2,5 +2,6 @@
 from services.product_service import get_products
 from services.dashboard_service import get_dashboard_data, get_pending_requests, get_available_engineers, get_project_progress
 from services.request_service import get_all_requests, update_request_status, create_request
-from services.engineer_service import get_all_engineers, get_available_engineers, get_engineer_by_id, assign_engineer_to_project, complete_engineer_assignment, get_engineers_by_project
-from services.progress_service import add_progress_entry, get_all_project_progress
+from services.engineer_service import get_all_engineers, get_available_engineers, get_engineer_by_id
+from services.assignment_service import assign_engineers_to_project, get_project_engineers, remove_engineer_from_project
+from services.progress_service import get_project_progress, update_project_progress

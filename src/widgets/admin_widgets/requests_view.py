@@ -17,10 +17,22 @@ def requests_view(page: ft.Page):
     # Obtener solicitudes pendientes
     pending_requests = get_pending_requests()
     
+    # Diccionario para rastrear qué tarjetas están expandidas
+    expanded_cards = {}
+    
     # Función para actualizar la lista de solicitudes
     def refresh_requests():
-        nonlocal pending_requests
+        nonlocal pending_requests, expanded_cards
         pending_requests = get_pending_requests()
+        
+        # Mantener el estado de expansión solo para las solicitudes que aún existen
+        new_expanded_cards = {}
+        for request in pending_requests:
+            request_id = request['id']
+            if request_id in expanded_cards:
+                new_expanded_cards[request_id] = expanded_cards[request_id]
+        
+        expanded_cards = new_expanded_cards
         requests_list.controls = [create_request_card(request) for request in pending_requests]
         
         # Actualizar el mensaje de no hay solicitudes
@@ -28,130 +40,13 @@ def requests_view(page: ft.Page):
         
         page.update()
     
-    # Función para ver detalles de una solicitud
-    def view_request_details(e, request_id):
-        # Obtener detalles de la solicitud
-        request_details = get_request_details(request_id)
-        if not request_details:
-            # Mostrar mensaje de error
-            page.snackbar = modern_snackbar(
-                "Error al obtener detalles de la solicitud",
-                "error",
-                3000
-            )
-            page.open(page.snackbar)
-            page.update()
-            return
+    # Función para alternar la expansión de una tarjeta
+    def toggle_card_expansion(e, request_id):
+        # Invertir el estado de expansión
+        expanded_cards[request_id] = not expanded_cards.get(request_id, False)
         
-        # Obtener detalles del producto
-        product = get_product_by_id(request_details["product_id"])
-        if not product:
-            # Mostrar mensaje de error
-            page.snackbar = modern_snackbar(
-                "Error al obtener detalles del producto",
-                "error",
-                3000
-            )
-            page.open(page.snackbar)
-            page.update()
-            return
-        
-        # Crear diálogo con detalles
-        dialog = ft.AlertDialog(
-            title=ft.Text(f"Solicitud #{request_id} - {product.name}"),
-            content=ft.Column(
-                controls=[
-                    # Información del cliente
-                    ft.Container(
-                        content=ft.Column(
-                            controls=[
-                                ft.Text("Información del cliente", weight="bold", size=16),
-                                ft.Text(f"Cliente: {request_details['client_name']}"),
-                                ft.Text(f"Email: {request_details['client_email'] if 'client_email' in request_details else 'No disponible'}"),
-                                ft.Text(f"Teléfono: {request_details['client_phone'] if 'client_phone' in request_details else 'No disponible'}")
-                            ],
-                            spacing=5
-                        ),
-                        padding=10,
-                        border_radius=5,
-                        bgcolor=ft.Colors.BLUE_GREY_50
-                    ),
-                    
-                    # Información del producto
-                    ft.Container(
-                        content=ft.Column(
-                            controls=[
-                                ft.Text("Información del producto", weight="bold", size=16),
-                                ft.Text(f"Producto: {product.name}"),
-                                ft.Text(f"Descripción: {product.description}"),
-                                ft.Text(f"Duración estimada: {product.days} días"),
-                                ft.Text(f"Ingenieros requeridos: {product.engineers}", color=ft.Colors.RED)
-                            ],
-                            spacing=5
-                        ),
-                        padding=10,
-                        margin=ft.margin.only(top=10),
-                        border_radius=5,
-                        bgcolor=ft.Colors.BLUE_GREY_50
-                    ),
-                    
-                    # Detalles de la solicitud
-                    ft.Container(
-                        content=ft.Column(
-                            controls=[
-                                ft.Text("Detalles de la solicitud", weight="bold", size=16),
-                                ft.Text(f"Fecha de solicitud: {request_details['request_date']}"),
-                                ft.Text(f"Detalles adicionales: {request_details['details'] if request_details['details'] else 'No se proporcionaron detalles adicionales'}")
-                            ],
-                            spacing=5
-                        ),
-                        padding=10,
-                        margin=ft.margin.only(top=10),
-                        border_radius=5,
-                        bgcolor=ft.Colors.BLUE_GREY_50
-                    ),
-                    
-                    # Nota importante
-                    ft.Container(
-                        content=ft.Text(
-                            "Nota: La asignación de ingenieros se realizará en el apartado de Gestión de Equipos una vez aprobada la solicitud.",
-                            color=ft.Colors.RED,
-                            italic=True,
-                            size=12
-                        ),
-                        margin=ft.margin.only(top=15)
-                    )
-                ],
-                scroll=ft.ScrollMode.AUTO,
-                spacing=10,
-                width=500,
-                height=400
-            ),
-            actions=[
-                ft.TextButton("Cerrar", on_click=lambda e: close_dialog()),
-                ft.TextButton("Rechazar", on_click=lambda e: reject_request_from_dialog(request_id)),
-                ft.TextButton("Aprobar", on_click=lambda e: approve_request_from_dialog(request_id, product.id))
-            ],
-            actions_alignment=ft.MainAxisAlignment.END
-        )
-        
-        # Función para cerrar el diálogo
-        def close_dialog():
-            page.dialog = None
-            page.update()
-        
-        # Función para rechazar la solicitud desde el diálogo
-        def reject_request_from_dialog(request_id):
-            close_dialog()
-            reject_request(None, request_id)
-        
-        # Función para aprobar la solicitud desde el diálogo
-        def approve_request_from_dialog(request_id, product_id):
-            close_dialog()
-            approve_request(None, request_id, product_id)
-        
-        # Mostrar diálogo
-        page.dialog = dialog
+        # Actualizar la lista de solicitudes para reflejar el cambio
+        requests_list.controls = [create_request_card(request) for request in pending_requests]
         page.update()
     
     # Función para aprobar una solicitud
@@ -210,58 +105,218 @@ def requests_view(page: ft.Page):
     
     # Función para crear una tarjeta de solicitud
     def create_request_card(request):
-        return ft.Card(
-            content=ft.Container(
-                content=ft.Column(
-                    controls=[
-                        # Encabezado de la tarjeta
-                        ft.ListTile(
-                            leading=ft.Icon(ft.Icons.REQUEST_PAGE, color=primary_color, size=30),
-                            title=ft.Text(f"Solicitud #{request['id']} - {request['product_name']}", weight="bold"),
-                            subtitle=ft.Text(f"Cliente: {request['client_name']} - Fecha: {request['request_date']}")
-                        ),
-                        
-                        # Botones de acción
-                        ft.Row(
+        request_id = request['id']
+        is_expanded = expanded_cards.get(request_id, False)
+        
+        # Crear los controles para la tarjeta
+        card_controls = [
+            # Encabezado de la tarjeta
+            ft.ListTile(
+                leading=ft.Icon(ft.Icons.REQUEST_PAGE, color=primary_color, size=30),
+                title=ft.Text(f"Solicitud #{request['id']} - {request['product_name']}", weight="bold"),
+                subtitle=ft.Text(f"Cliente: {request['client_name']} - Fecha: {request['request_date']}")
+            )
+        ]
+        
+        # Si está expandido, añadir los detalles
+        if is_expanded:
+            # Obtener detalles completos de la solicitud
+            request_details = get_request_details(request_id)
+            product = get_product_by_id(request_details["product_id"]) if request_details else None
+            
+            if request_details and product:
+                # Añadir un divisor
+                card_controls.append(ft.Divider(height=1, color=ft.Colors.GREY_300))
+                
+                # Información del cliente
+                card_controls.append(
+                    ft.Container(
+                        content=ft.Column(
                             controls=[
-                                ft.OutlinedButton(
-                                    "Ver detalles",
-                                    icon=ft.Icons.VISIBILITY,
-                                    on_click=lambda e: view_request_details(e, request['id']),
-                                    style=ft.ButtonStyle(
-                                        color=primary_color
-                                    )
+                                ft.Text("Información del cliente", weight="bold", size=16, color=primary_color),
+                                ft.Row(
+                                    controls=[
+                                        ft.Icon(ft.Icons.PERSON, size=16, color=ft.Colors.BLUE_GREY),
+                                        ft.Text(f"Cliente: {request_details['client_name']}", size=14, color=text_color)
+                                    ],
+                                    spacing=10
                                 ),
-                                ft.OutlinedButton(
-                                    "Rechazar",
-                                    icon=ft.Icons.CANCEL,
-                                    on_click=lambda e: reject_request(e, request['id']),
-                                    style=ft.ButtonStyle(
-                                        color=ft.Colors.RED
-                                    )
+                                ft.Row(
+                                    controls=[
+                                        ft.Icon(ft.Icons.EMAIL, size=16, color=ft.Colors.BLUE_GREY),
+                                        ft.Text(f"Email: {request_details.get('client_email', 'No disponible')}", size=14, color=text_color)
+                                    ],
+                                    spacing=10
                                 ),
-                                ft.ElevatedButton(
-                                    "Aprobar",
-                                    icon=ft.Icons.CHECK_CIRCLE,
-                                    on_click=lambda e: approve_request(e, request['id'], request['product_id']),
-                                    style=ft.ButtonStyle(
-                                        color=ft.Colors.WHITE,
-                                        bgcolor=ft.Colors.GREEN
-                                    )
+                                ft.Row(
+                                    controls=[
+                                        ft.Icon(ft.Icons.PHONE, size=16, color=ft.Colors.BLUE_GREY),
+                                        ft.Text(f"Teléfono: {request_details.get('client_phone', 'No disponible')}", size=14, color=text_color)
+                                    ],
+                                    spacing=10
                                 )
                             ],
-                            alignment=ft.MainAxisAlignment.END,
+                            spacing=8
+                        ),
+                        padding=10,
+                        border_radius=5,
+                        bgcolor=ft.Colors.BLUE_GREY_50
+                    )
+                )
+                
+                # Información del producto
+                card_controls.append(
+                    ft.Container(
+                        content=ft.Column(
+                            controls=[
+                                ft.Text("Información del producto", weight="bold", size=16, color=primary_color),
+                                ft.Row(
+                                    controls=[
+                                        ft.Icon(ft.Icons.INVENTORY_2, size=16, color=ft.Colors.BLUE_GREY),
+                                        ft.Text(f"Producto: {product.name}", size=14, color=text_color)
+                                    ],
+                                    spacing=10
+                                ),
+                                ft.Row(
+                                    controls=[
+                                        ft.Icon(ft.Icons.DESCRIPTION, size=16, color=ft.Colors.BLUE_GREY),
+                                        ft.Text(f"Descripción: {product.description}", size=14, color=text_color)
+                                    ],
+                                    spacing=10
+                                ),
+                                ft.Row(
+                                    controls=[
+                                        ft.Icon(ft.Icons.CALENDAR_TODAY, size=16, color=ft.Colors.BLUE_GREY),
+                                        ft.Text(f"Duración estimada: {product.days} días", size=14, color=text_color)
+                                    ],
+                                    spacing=10
+                                ),
+                                ft.Row(
+                                    controls=[
+                                        ft.Icon(ft.Icons.PEOPLE, size=16, color=ft.Colors.RED),
+                                        ft.Text(f"Ingenieros requeridos: {product.engineers}", size=14, color=ft.Colors.RED)
+                                    ],
+                                    spacing=10
+                                )
+                            ],
+                            spacing=8
+                        ),
+                        padding=10,
+                        margin=ft.margin.only(top=10),
+                        border_radius=5,
+                        bgcolor=ft.Colors.BLUE_GREY_50
+                    )
+                )
+                
+                # Detalles de la solicitud
+                card_controls.append(
+                    ft.Container(
+                        content=ft.Column(
+                            controls=[
+                                ft.Text("Detalles de la solicitud", weight="bold", size=16, color=primary_color),
+                                ft.Row(
+                                    controls=[
+                                        ft.Icon(ft.Icons.EVENT, size=16, color=ft.Colors.BLUE_GREY),
+                                        ft.Text(f"Fecha de solicitud: {request_details['request_date']}", size=14, color=text_color)
+                                    ],
+                                    spacing=10
+                                ),
+                                ft.Container(
+                                    content=ft.Column(
+                                        controls=[
+                                            ft.Text("Detalles adicionales:", size=14, weight="bold", color=text_color),
+                                            ft.Text(
+                                                request_details['details'] if request_details['details'] else "No se proporcionaron detalles adicionales",
+                                                size=14,
+                                                color=text_color,
+                                                italic=True if not request_details['details'] else False
+                                            )
+                                        ],
+                                        spacing=5
+                                    ),
+                                    padding=10,
+                                    border_radius=5,
+                                    bgcolor=ft.Colors.with_opacity(0.5, ft.Colors.BLUE_GREY_50)
+                                )
+                            ],
+                            spacing=8
+                        ),
+                        padding=10,
+                        margin=ft.margin.only(top=10),
+                        border_radius=5,
+                        bgcolor=ft.Colors.BLUE_GREY_50
+                    )
+                )
+                
+                # Nota importante
+                card_controls.append(
+                    ft.Container(
+                        content=ft.Row(
+                            controls=[
+                                ft.Icon(ft.Icons.INFO, size=16, color=ft.Colors.RED),
+                                ft.Text(
+                                    "La asignación de ingenieros se realizará en el apartado de Gestión de Equipos una vez aprobada la solicitud.",
+                                    color=ft.Colors.RED,
+                                    italic=True,
+                                    size=12
+                                )
+                            ],
                             spacing=10
+                        ),
+                        margin=ft.margin.only(top=15)
+                    )
+                )
+        
+        # Añadir los botones de acción
+        card_controls.append(
+            ft.Row(
+                controls=[
+                    ft.OutlinedButton(
+                        "Ocultar detalles" if is_expanded else "Ver detalles",
+                        icon=ft.Icons.VISIBILITY_OFF if is_expanded else ft.Icons.VISIBILITY,
+                        on_click=lambda e, rid=request_id: toggle_card_expansion(e, rid),
+                        style=ft.ButtonStyle(
+                            color=ft.Colors.BLUE_GREY if is_expanded else primary_color
                         )
-                    ],
+                    ),
+                    ft.OutlinedButton(
+                        "Rechazar",
+                        icon=ft.Icons.CANCEL,
+                        on_click=lambda e, rid=request_id: reject_request(e, rid),
+                        style=ft.ButtonStyle(
+                            color=ft.Colors.RED
+                        )
+                    ),
+                    ft.ElevatedButton(
+                        "Aprobar",
+                        icon=ft.Icons.CHECK_CIRCLE,
+                        on_click=lambda e, rid=request_id, pid=request['product_id']: approve_request(e, rid, pid),
+                        style=ft.ButtonStyle(
+                            color=ft.Colors.WHITE,
+                            bgcolor=ft.Colors.GREEN
+                        )
+                    )
+                ],
+                alignment=ft.MainAxisAlignment.END,
+                spacing=10
+            )
+        )
+        
+        # Crear la tarjeta con todos los controles
+        card = ft.Card(
+            content=ft.Container(
+                content=ft.Column(
+                    controls=card_controls,
                     spacing=15
                 ),
                 padding=15,
                 width=800
             ),
-            elevation=3,
+            elevation=8 if is_expanded else 3,  # Mayor elevación cuando está expandido
             margin=ft.margin.only(bottom=15)
         )
+        
+        return card
     
     # Lista de solicitudes pendientes
     requests_list = ft.Column(

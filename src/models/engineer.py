@@ -1,46 +1,30 @@
 class Engineer:
-    def __init__(
-        self,
-        id: int = None,
-        user_id: int = None,
-        name: str = "",
-        specialty: str = "",
-        available: bool = True
-    ):
+    """Modelo para representar un ingeniero"""
+    
+    def __init__(self, id=None, name="", specialty="", experience=0, available=True):
         self.id = id
-        self.user_id = user_id
         self.name = name
         self.specialty = specialty
+        self.experience = experience
         self.available = available
-    
-    def to_dict(self) -> dict:
-        """Convierte el objeto a diccionario para fácil serialización"""
-        return {
-            "id": self.id,
-            "user_id": self.user_id,
-            "name": self.name,
-            "specialty": self.specialty,
-            "available": self.available
-        }
-    
-    @classmethod
-    def from_dict(cls, data: dict):
-        """Crea un Ingeniero desde un diccionario"""
-        return cls(
-            id=data.get("id"),
-            user_id=data.get("user_id"),
-            name=data.get("name", ""),
-            specialty=data.get("specialty", ""),
-            available=data.get("available", True)
-        )
     
     @classmethod
     def from_db_row(cls, row):
-        """Crea un Ingeniero desde una fila de base de datos"""
+        """Crea un objeto Engineer a partir de una fila de la base de datos"""
         return cls(
             id=row["id"],
-            user_id=row["id_usuario"],
             name=row["nombre"],
-            specialty=row["especialidad"] if "especialidad" in row.keys() else "",
-            available=bool(row["disponible"]) if "disponible" in row.keys() else True
+            specialty=row["especialidad"],
+            experience=row["experiencia"],
+            available=row["disponible"] == 1
         )
+    
+    def to_dict(self):
+        """Convierte el objeto a un diccionario"""
+        return {
+            "id": self.id,
+            "name": self.name,
+            "specialty": self.specialty,
+            "experience": self.experience,
+            "available": self.available
+        }

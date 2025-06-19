@@ -1,51 +1,33 @@
 class Progress:
-    def __init__(
-        self,
-        id: int = None,
-        product_id: int = None,
-        engineer_id: int = None,
-        date: str = "",
-        description: str = "",
-        percentage: int = 0
-    ):
+    """Modelo para representar el progreso de un proyecto"""
+    
+    def __init__(self, id=None, project_id=None, engineer_id=None, percentage=0, description="", date=None):
         self.id = id
-        self.product_id = product_id
+        self.project_id = project_id
         self.engineer_id = engineer_id
-        self.date = date
-        self.description = description
         self.percentage = percentage
-    
-    def to_dict(self) -> dict:
-        """Convierte el objeto a diccionario para fácil serialización"""
-        return {
-            "id": self.id,
-            "product_id": self.product_id,
-            "engineer_id": self.engineer_id,
-            "date": self.date,
-            "description": self.description,
-            "percentage": self.percentage
-        }
-    
-    @classmethod
-    def from_dict(cls, data: dict):
-        """Crea un Avance desde un diccionario"""
-        return cls(
-            id=data.get("id"),
-            product_id=data.get("product_id"),
-            engineer_id=data.get("engineer_id"),
-            date=data.get("date", ""),
-            description=data.get("description", ""),
-            percentage=data.get("percentage", 0)
-        )
+        self.description = description
+        self.date = date
     
     @classmethod
     def from_db_row(cls, row):
-        """Crea un Avance desde una fila de base de datos"""
+        """Crea un objeto Progress a partir de una fila de la base de datos"""
         return cls(
             id=row["id"],
-            product_id=row["id_producto"],
+            project_id=row["id_proyecto"] if "id_proyecto" in row.keys() else row["id_producto"],
             engineer_id=row["id_ingeniero"],
-            date=row["fecha"],
-            description=row["descripcion"],
-            percentage=row["porcentaje"]
+            percentage=row["porcentaje"],
+            description=row["descripcion"] if "descripcion" in row.keys() else "",
+            date=row["fecha"]
         )
+    
+    def to_dict(self):
+        """Convierte el objeto a un diccionario"""
+        return {
+            "id": self.id,
+            "project_id": self.project_id,
+            "engineer_id": self.engineer_id,
+            "percentage": self.percentage,
+            "description": self.description,
+            "date": self.date
+        }

@@ -39,7 +39,8 @@ def admin_view(page: ft.Page):
                 from widgets.admin_widgets.requests_view import requests_view
                 content_area.content = requests_view(page)
             elif view_name == "teams":
-                content_area.content = ft.Text("Vista de Gestión de Equipos", size=30, color=ft.Colors.GREY_400)
+                from widgets.admin_widgets.teams_view import teams_view
+                content_area.content = teams_view(page)
             elif view_name == "progress":
                 content_area.content = ft.Text("Vista de Progreso y Avances", size=30, color=ft.Colors.GREY_400)
             else:
