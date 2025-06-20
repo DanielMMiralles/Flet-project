@@ -84,8 +84,8 @@ def app_bar(page: ft.Page, user_role: str, user_name: str = "Usuario") -> ft.App
             ft.IconButton(
                 icon=ft.Icons.HOME,
                 icon_size=22,
-                tooltip="Dashboard",
-                on_click=lambda _: page.go(f"/{user_role}/dashboard")
+                tooltip="Inicio",
+                on_click=lambda _: scroll_to_top(page)
             ),
             *get_role_specific_actions(page, user_role),
             ft.PopupMenuButton(
@@ -95,11 +95,12 @@ def app_bar(page: ft.Page, user_role: str, user_name: str = "Usuario") -> ft.App
                     ft.PopupMenuItem(
                         text="Perfil",
                         icon=ft.Icons.ACCOUNT_CIRCLE,
-                        on_click=lambda _: page.go(f"/{user_role}")
+                        on_click=lambda _: show_profile_info(page, user_name, user_role)
                     ),
                     ft.PopupMenuItem(
                         text="Configuración",
-                        icon=ft.Icons.SETTINGS
+                        icon=ft.Icons.SETTINGS,
+                        on_click=lambda _: show_settings_info(page)
                     ),
                     ft.PopupMenuItem(
                         text="Cerrar sesión",
@@ -112,14 +113,25 @@ def app_bar(page: ft.Page, user_role: str, user_name: str = "Usuario") -> ft.App
     )
 
 def get_role_specific_actions(page: ft.Page, user_role: str):
-    """Botones específicos simplificados"""
+    """Botones específicos con funcionalidad"""
+    
+    def show_notification(message):
+        page.snackbar = modern_snackbar(message, "info", 3000)
+        page.open(page.snackbar)
+    
     if user_role == "client":
         return [
             ft.IconButton(
                 icon=ft.Icons.ADD_TASK,
                 icon_size=22,
                 tooltip="Nueva Solicitud",
-                on_click=lambda _: page.go("/client/new-request")
+                on_click=lambda _: show_notification("Funcionalidad de nueva solicitud disponible en el catálogo")
+            ),
+            ft.IconButton(
+                icon=ft.Icons.HISTORY,
+                icon_size=22,
+                tooltip="Historial",
+                on_click=lambda _: show_notification("Historial de solicitudes - Próximamente")
             )
         ]
     elif user_role == "engineer":
@@ -128,34 +140,108 @@ def get_role_specific_actions(page: ft.Page, user_role: str):
                 icon=ft.Icons.ASSIGNMENT,
                 icon_size=22,
                 tooltip="Mis Tareas",
-                on_click=lambda _: page.go("/engineer/tasks")
+                on_click=lambda _: show_notification("Panel de tareas del ingeniero")
+            ),
+            ft.IconButton(
+                icon=ft.Icons.TIMELINE,
+                icon_size=22,
+                tooltip="Progreso",
+                on_click=lambda _: show_notification("Seguimiento de progreso de proyectos")
             )
         ]
     elif user_role == "admin":
         return [
             ft.IconButton(
-                icon=ft.Icons.ADMIN_PANEL_SETTINGS,
+                icon=ft.Icons.DASHBOARD,
                 icon_size=22,
-                tooltip="Administración",
-                on_click=lambda _: page.go("/admin/dashboard")
+                tooltip="Dashboard",
+                on_click=lambda _: show_notification("Navegando al dashboard principal")
             ),
             ft.IconButton(
-                icon=ft.Icons.ASSIGNMENT_IND,
+                icon=ft.Icons.NOTIFICATIONS,
                 icon_size=22,
-                tooltip="Asignar Tareas",
-                on_click=lambda _: page.go("/admin/assignments")
+                tooltip="Notificaciones",
+                on_click=lambda _: show_notification("Sistema de notificaciones - 3 nuevas")
             )
         ]
     return []
 
-# Función de logout común
-def logout(page: ft.Page):
-    page.session_data.clear()
+# Función para scroll al principio
+def scroll_to_top(page: ft.Page):
+    page.scroll_to(offset=0, duration=500)
+    page.snackbar = modern_snackbar("Volviendo al inicio", "info", 2000)
+    page.open(page.snackbar)
+
+# Funciones auxiliares para el menú
+def show_profile_info(page: ft.Page, user_name: str, user_role: str):
     page.snackbar = modern_snackbar(
-        "Sesión cerrada correctamente", 
-        "success",
+        f"Perfil: {user_name} ({user_role.title()})", 
+        "info",
         3000
     )
     page.open(page.snackbar)
-    page.go("/login")
+
+def show_settings_info(page: ft.Page):
+    page.snackbar = modern_snackbar(
+        "Configuración del sistema - Próximamente", 
+        "info",
+        3000
+    )
+    page.open(page.snackbar)
+
+# Función para mostrar pantalla de carga
+def show_loading_screen(page: ft.Page):
+    loading_dialog = ft.AlertDialog(
+        content=ft.Container(
+            content=ft.Column(
+                controls=[
+                    ft.ProgressRing(width=50, height=50, color=ft.Colors.BLUE_ACCENT),
+                    ft.Text("Cerrando sesión...", size=16, text_align=ft.TextAlign.CENTER)
+                ],
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                spacing=20
+            ),
+            width=200,
+            height=120,
+            alignment=ft.alignment.center
+        ),
+        modal=True
+    )
+    page.dialog = loading_dialog
+    page.open(page.dialog)
     page.update()
+
+# Función de logout con pantalla de carga
+def logout(page: ft.Page):
+    # Mostrar pantalla de carga
+    show_loading_screen(page)
+    
+    # Función para completar el logout
+    def complete_logout():
+        # Cerrar diálogo de carga
+        if hasattr(page, 'dialog') and page.dialog:
+            page.close(page.dialog)
+        page.dialog = None
+        
+        # Limpiar datos de sesión
+        page.session_data.clear()
+        
+        # Limpiar AppBar
+        page.appbar = None
+        
+        # Mostrar mensaje de despedida
+        page.snackbar = modern_snackbar(
+            "Sesión cerrada correctamente. ¡Hasta pronto!", 
+            "success",
+            3000
+        )
+        page.open(page.snackbar)
+        
+        # Redirigir al login
+        page.go("/login")
+        page.update()
+    
+    # Programar cierre después de 1.5 segundos
+    import threading
+    timer = threading.Timer(1.5, complete_logout)
+    timer.start()

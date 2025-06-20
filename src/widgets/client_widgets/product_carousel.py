@@ -167,16 +167,16 @@ def products_carousel_view(page: ft.Page, products=None):
                         ft.Container(
                             content=ft.Image(
                                 src=image_path,
-                                height=180,
-                                width=280,
+                                height=160,
+                                width=260,
                                 fit=ft.ImageFit.COVER,
                                 border_radius=ft.border_radius.only(top_left=15, top_right=15)
                             ),
                             clip_behavior=ft.ClipBehavior.ANTI_ALIAS,
                             border_radius=ft.border_radius.only(top_left=15, top_right=15),
                             bgcolor=ft.Colors.BLUE_GREY_100,
-                            width=280,
-                            height=180
+                            width=260,
+                            height=160
                         ),
                         
                         # Contenido de la tarjeta
@@ -228,8 +228,8 @@ def products_carousel_view(page: ft.Page, products=None):
                     ],
                     spacing=0
                 ),
-                width=280,
-                height=300,
+                width=260,
+                height=280,
                 border_radius=15,
                 bgcolor=ft.Colors.WHITE,
                 clip_behavior=ft.ClipBehavior.ANTI_ALIAS,
@@ -271,19 +271,19 @@ def products_carousel_view(page: ft.Page, products=None):
                         ft.Container(
                             content=carousel,
                             padding=ft.padding.symmetric(horizontal=20),
-                            height=350
+                            height=320
                         ),
                         ft.Row(
                             controls=[
                                 ft.IconButton(
                                     icon=ft.Icons.ARROW_BACK_IOS,
-                                    icon_color=ft.Colors.WHITE,
+                                    icon_color=ft.Colors.BLUE_GREY_800,
                                     on_click=lambda e: carousel.scroll_to(delta=-300, duration=500)
                                 ),
                                 send_request_btn,
                                 ft.IconButton(
                                     icon=ft.Icons.ARROW_FORWARD_IOS,
-                                    icon_color=ft.Colors.WHITE,
+                                    icon_color=ft.Colors.BLUE_GREY_800,
                                     on_click=lambda e: carousel.scroll_to(delta=300, duration=500)
                                 )
                             ],
