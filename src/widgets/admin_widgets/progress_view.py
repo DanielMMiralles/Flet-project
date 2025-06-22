@@ -21,17 +21,77 @@ def progress_view(page: ft.Page):
     
     # Obtener proyectos activos (con equipo asignado)
     def get_active_projects():
-        projects = get_approved_products()
-        active_projects = []
-        
-        for project in projects:
-            engineers = get_project_engineers(project["id"])
-            if engineers and len(engineers) > 0:
-                project["assigned_engineers"] = engineers
-                project["progress"] = get_project_progress(project["id"])
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            
+            # Obtener proyectos que tienen equipo asignado
+            cursor.execute("""
+                SELECT DISTINCT p.*, c.nombre as client_name
+                FROM Producto p
+                INNER JOIN Asignaciones a ON p.id = a.id_producto
+                LEFT JOIN Clientes c ON p.client_id = c.id
+                ORDER BY p.nombre
+            """)
+            
+            projects_rows = cursor.fetchall()
+            active_projects = []
+            
+            for row in projects_rows:
+                # Obtener ingenieros asignados
+                cursor.execute("""
+                    SELECT i.nombre as name, i.especialidad as specialty
+                    FROM Ingenieros i
+                    INNER JOIN Asignaciones a ON i.id = a.id_ingeniero
+                    WHERE a.id_producto = ?
+                """, (row["id"],))
+                
+                engineers = []
+                for eng_row in cursor.fetchall():
+                    engineers.append({
+                        "name": eng_row["name"],
+                        "specialty": eng_row["specialty"]
+                    })
+                
+                # Obtener progreso total
+                cursor.execute("""
+                    SELECT COALESCE(SUM(porcentaje), 0) as total_progress
+                    FROM Avances
+                    WHERE id_producto = ?
+                """, (row["id"],))
+                
+                progress_row = cursor.fetchone()
+                progress = min(100, progress_row["total_progress"]) if progress_row else 0
+                
+                # Verificar qué columnas existen
+                try:
+                    dias = row["dias"] if "dias" in row.keys() else 30
+                except (KeyError, IndexError):
+                    dias = 30
+                
+                try:
+                    user_desc = row["user_description"] if "user_description" in row.keys() else "No especificada"
+                except (KeyError, IndexError):
+                    user_desc = "No especificada"
+                
+                project = {
+                    "id": row["id"],
+                    "name": row["nombre"],
+                    "description": row["descripcion"] or "Sin descripción",
+                    "client_name": row["client_name"] or "No asignado",
+                    "days": dias,
+                    "user_description": user_desc,
+                    "assigned_engineers": engineers,
+                    "progress": progress
+                }
                 active_projects.append(project)
-        
-        return active_projects
+            
+            conn.close()
+            return active_projects
+            
+        except Exception as e:
+            print(f"Error obteniendo proyectos activos: {e}")
+            return []
     
     # Obtener avances detallados de un proyecto
     def get_project_advances(project_id):
@@ -40,33 +100,13 @@ def progress_view(page: ft.Page):
             conn = get_db_connection()
             cursor = conn.cursor()
             
-            # Verificar si existe la tabla de avances
-            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='Avances'")
-            if not cursor.fetchone():
-                # Crear tabla de avances si no existe
-                cursor.execute("""
-                    CREATE TABLE Avances (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        id_proyecto INTEGER,
-                        id_ingeniero INTEGER,
-                        descripcion TEXT,
-                        porcentaje_avance REAL,
-                        fecha_registro TEXT DEFAULT CURRENT_TIMESTAMP,
-                        FOREIGN KEY (id_proyecto) REFERENCES Producto(id),
-                        FOREIGN KEY (id_ingeniero) REFERENCES Engineer(id)
-                    )
-                """)
-                conn.commit()
-                conn.close()
-                return []
-            
             # Obtener avances con información del ingeniero
             cursor.execute("""
-                SELECT a.*, e.name as ingeniero_nombre, e.specialty as especialidad
+                SELECT a.*, i.nombre as ingeniero_nombre, i.especialidad as especialidad
                 FROM Avances a
-                JOIN Engineer e ON a.id_ingeniero = e.id
-                WHERE a.id_proyecto = ?
-                ORDER BY a.fecha_registro DESC
+                JOIN Ingenieros i ON a.id_ingeniero = i.id
+                WHERE a.id_producto = ?
+                ORDER BY a.fecha DESC
             """, (project_id,))
             
             advances = []
@@ -74,8 +114,8 @@ def progress_view(page: ft.Page):
                 advance = {
                     "id": row["id"],
                     "descripcion": row["descripcion"],
-                    "porcentaje_avance": row["porcentaje_avance"],
-                    "fecha_registro": row["fecha_registro"],
+                    "porcentaje": row["porcentaje"],
+                    "fecha": row["fecha"],
                     "ingeniero_nombre": row["ingeniero_nombre"],
                     "especialidad": row["especialidad"]
                 }
@@ -87,6 +127,115 @@ def progress_view(page: ft.Page):
         except Exception as e:
             print(f"Error obteniendo avances del proyecto: {e}")
             return []
+    
+    # Función para eliminar avance
+    def delete_advance(advance_id, project_id):
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute("DELETE FROM Avances WHERE id = ?", (advance_id,))
+            
+            # Recalcular progreso
+            cursor.execute("""
+                SELECT COALESCE(SUM(porcentaje), 0) as total_progress
+                FROM Avances
+                WHERE id_producto = ?
+            """, (project_id,))
+            
+            progress_row = cursor.fetchone()
+            total_progress = progress_row["total_progress"] if progress_row else 0
+            
+            # Actualizar tabla Progreso
+            cursor.execute("""
+                INSERT OR REPLACE INTO Progreso (id_producto, porcentaje, fecha_actualizacion)
+                VALUES (?, ?, datetime('now'))
+            """, (project_id, total_progress))
+            
+            conn.commit()
+            conn.close()
+            return True, "Avance eliminado correctamente"
+            
+        except Exception as e:
+            print(f"Error eliminando avance: {e}")
+            return False, f"Error: {str(e)}"
+    
+    # Función para editar avance
+    def edit_advance(advance_id, project_id, new_percentage, new_description):
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute("""
+                UPDATE Avances 
+                SET porcentaje = ?, descripcion = ?
+                WHERE id = ?
+            """, (new_percentage, new_description, advance_id))
+            
+            # Recalcular progreso
+            cursor.execute("""
+                SELECT COALESCE(SUM(porcentaje), 0) as total_progress
+                FROM Avances
+                WHERE id_producto = ?
+            """, (project_id,))
+            
+            progress_row = cursor.fetchone()
+            total_progress = progress_row["total_progress"] if progress_row else 0
+            
+            # Actualizar tabla Progreso
+            cursor.execute("""
+                INSERT OR REPLACE INTO Progreso (id_producto, porcentaje, fecha_actualizacion)
+                VALUES (?, ?, datetime('now'))
+            """, (project_id, total_progress))
+            
+            conn.commit()
+            conn.close()
+            return True, "Avance actualizado correctamente"
+            
+        except Exception as e:
+            print(f"Error editando avance: {e}")
+            return False, f"Error: {str(e)}"
+    
+    # Función para verificar contraseña de administrador
+    def verify_admin_password(password):
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            
+            # Verificar en la tabla Usuarios con rol admin
+            cursor.execute("""
+                SELECT COUNT(*) as count
+                FROM Usuarios
+                WHERE password = ? AND rol = 'admin'
+            """, (password,))
+            
+            result = cursor.fetchone()
+            conn.close()
+            return result["count"] > 0
+            
+        except Exception as e:
+            print(f"Error verificando contraseña: {e}")
+            return False
+    
+    # Función para eliminar proyecto
+    def delete_project(project_id):
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            
+            # Eliminar en orden para respetar foreign keys
+            cursor.execute("DELETE FROM Avances WHERE id_producto = ?", (project_id,))
+            cursor.execute("DELETE FROM Progreso WHERE id_producto = ?", (project_id,))
+            cursor.execute("DELETE FROM Asignaciones WHERE id_producto = ?", (project_id,))
+            cursor.execute("DELETE FROM Producto WHERE id = ?", (project_id,))
+            
+            conn.commit()
+            conn.close()
+            return True, "Proyecto eliminado correctamente"
+            
+        except Exception as e:
+            print(f"Error eliminando proyecto: {e}")
+            return False, f"Error: {str(e)}"
     
     # Estado de la vista
     active_projects = get_active_projects()
@@ -129,18 +278,20 @@ def progress_view(page: ft.Page):
     
     # Función para actualizar la vista
     def refresh_view():
-        nonlocal active_projects, projects_list
+        nonlocal active_projects, projects_list, selected_project
+        current_selected_id = selected_project["id"] if selected_project else None
+        
         active_projects = get_active_projects()
         projects_list.controls = [create_project_card(project) for project in active_projects]
         projects_count.value = f"{len(active_projects)} proyectos activos"
         no_projects_message.visible = len(active_projects) == 0
         
         # Actualizar detalles si hay un proyecto seleccionado
-        if selected_project:
+        if current_selected_id:
             # Buscar el proyecto actualizado
             updated_project = None
             for proj in active_projects:
-                if proj["id"] == selected_project["id"]:
+                if proj["id"] == current_selected_id:
                     updated_project = proj
                     break
             
@@ -151,6 +302,60 @@ def progress_view(page: ft.Page):
                 update_detail_panel()
         
         page.update()
+    
+    # Función para mostrar diálogo de eliminar proyecto
+    def show_delete_project_dialog(project):
+        password_field = ft.TextField(
+            label="Contraseña de Administrador",
+            password=True,
+            width=300
+        )
+        
+        def confirm_delete(e):
+            if not password_field.value:
+                page.snackbar = modern_snackbar("Ingrese la contraseña", "error", 3000)
+                page.open(page.snackbar)
+                return
+            
+            if not verify_admin_password(password_field.value):
+                page.snackbar = modern_snackbar("Contraseña incorrecta", "error", 3000)
+                page.open(page.snackbar)
+                return
+            
+            success, message = delete_project(project["id"])
+            page.close(delete_dialog)
+            
+            if success:
+                page.snackbar = modern_snackbar(message, "success", 3000)
+                refresh_view()
+            else:
+                page.snackbar = modern_snackbar(message, "error", 3000)
+            
+            page.open(page.snackbar)
+        
+        delete_dialog = ft.AlertDialog(
+            title=ft.Text("¿Eliminar proyecto?"),
+            content=ft.Column(
+                controls=[
+                    ft.Text(f"Se eliminará permanentemente el proyecto '{project['name']}' y todos sus datos asociados."),
+                    ft.Text("Esta acción no se puede deshacer.", color=ft.Colors.RED, weight="bold"),
+                    password_field
+                ],
+                spacing=10,
+                tight=True
+            ),
+            actions=[
+                ft.TextButton("Cancelar", on_click=lambda _: page.close(delete_dialog)),
+                ft.ElevatedButton(
+                    "Eliminar", 
+                    on_click=confirm_delete,
+                    bgcolor=ft.Colors.RED,
+                    color=ft.Colors.WHITE
+                )
+            ]
+        )
+        page.dialog = delete_dialog
+        page.open(delete_dialog)
     
     # Función para crear el contenido del panel de detalles
     def create_detail_content(project, advances):
@@ -163,6 +368,86 @@ def progress_view(page: ft.Page):
         advance_items = []
         if advances:
             for advance in advances:
+                def create_edit_dialog(adv):
+                    edit_percentage = ft.TextField(
+                        label="Porcentaje",
+                        value=str(adv['porcentaje']),
+                        width=100,
+                        suffix_text="%"
+                    )
+                    edit_description = ft.TextField(
+                        label="Descripción",
+                        value=adv['descripcion'],
+                        multiline=True,
+                        width=300
+                    )
+                    
+                    def save_edit(e):
+                        try:
+                            new_percentage = int(edit_percentage.value)
+                            if new_percentage < 0 or new_percentage > 100:
+                                page.snackbar = modern_snackbar("El porcentaje debe estar entre 0 y 100", "error", 3000)
+                                page.open(page.snackbar)
+                                return
+                        except ValueError:
+                            page.snackbar = modern_snackbar("El porcentaje debe ser un número", "error", 3000)
+                            page.open(page.snackbar)
+                            return
+                        
+                        success, message = edit_advance(adv['id'], project['id'], new_percentage, edit_description.value)
+                        page.close(edit_dialog)
+                        
+                        if success:
+                            page.snackbar = modern_snackbar(message, "success", 3000)
+                            refresh_view()
+                        else:
+                            page.snackbar = modern_snackbar(message, "error", 3000)
+                        
+                        page.open(page.snackbar)
+                    
+                    edit_dialog = ft.AlertDialog(
+                        title=ft.Text("Editar Avance"),
+                        content=ft.Column(
+                            controls=[edit_percentage, edit_description],
+                            spacing=10,
+                            tight=True
+                        ),
+                        actions=[
+                            ft.TextButton("Cancelar", on_click=lambda _: page.close(edit_dialog)),
+                            ft.ElevatedButton("Guardar", on_click=save_edit)
+                        ]
+                    )
+                    return edit_dialog
+                
+                def show_edit_dialog(adv):
+                    dialog = create_edit_dialog(adv)
+                    page.dialog = dialog
+                    page.open(dialog)
+                
+                def confirm_delete(adv):
+                    def delete_confirmed(e):
+                        success, message = delete_advance(adv['id'], project['id'])
+                        page.close(confirm_dialog)
+                        
+                        if success:
+                            page.snackbar = modern_snackbar(message, "success", 3000)
+                            refresh_view()
+                        else:
+                            page.snackbar = modern_snackbar(message, "error", 3000)
+                        
+                        page.open(page.snackbar)
+                    
+                    confirm_dialog = ft.AlertDialog(
+                        title=ft.Text("¿Eliminar avance?"),
+                        content=ft.Text(f"Se eliminará el avance de {adv['porcentaje']}% registrado por {adv['ingeniero_nombre']}"),
+                        actions=[
+                            ft.TextButton("Cancelar", on_click=lambda _: page.close(confirm_dialog)),
+                            ft.ElevatedButton("Eliminar", on_click=delete_confirmed, bgcolor=ft.Colors.RED, color=ft.Colors.WHITE)
+                        ]
+                    )
+                    page.dialog = confirm_dialog
+                    page.open(confirm_dialog)
+                
                 advance_item = ft.Container(
                     content=ft.Column(
                         controls=[
@@ -172,12 +457,25 @@ def progress_view(page: ft.Page):
                                     ft.Text(f"{advance['ingeniero_nombre']} - {advance['especialidad']}", 
                                            weight="bold", size=14, color=text_color),
                                     ft.Container(expand=True),
-                                    ft.Text(f"{advance['porcentaje_avance']}%", 
-                                           color=ft.Colors.GREEN, weight="bold")
+                                    ft.Text(f"{advance['porcentaje']}%", 
+                                           color=ft.Colors.GREEN, weight="bold"),
+                                    ft.IconButton(
+                                        icon=ft.Icons.EDIT,
+                                        icon_size=16,
+                                        tooltip="Editar",
+                                        on_click=lambda _, adv=advance: show_edit_dialog(adv)
+                                    ),
+                                    ft.IconButton(
+                                        icon=ft.Icons.DELETE,
+                                        icon_size=16,
+                                        icon_color=ft.Colors.RED,
+                                        tooltip="Eliminar",
+                                        on_click=lambda _, adv=advance: confirm_delete(adv)
+                                    )
                                 ]
                             ),
                             ft.Text(advance['descripcion'], size=12, color=text_color),
-                            ft.Text(f"Registrado: {advance['fecha_registro']}", 
+                            ft.Text(f"Registrado: {advance['fecha']}", 
                                    size=10, color=ft.Colors.GREY_600, italic=True)
                         ],
                         spacing=5
@@ -225,7 +523,19 @@ def progress_view(page: ft.Page):
                 ft.Container(
                     content=ft.Column(
                         controls=[
-                            ft.Text("Información del proyecto", weight="bold", size=16, color=primary_color),
+                            ft.Row(
+                                controls=[
+                                    ft.Text("Información del proyecto", weight="bold", size=16, color=primary_color),
+                                    ft.Container(expand=True),
+                                    ft.ElevatedButton(
+                                        "Eliminar Proyecto",
+                                        icon=ft.Icons.DELETE_FOREVER,
+                                        bgcolor=ft.Colors.RED,
+                                        color=ft.Colors.WHITE,
+                                        on_click=lambda _: show_delete_project_dialog(project)
+                                    )
+                                ]
+                            ),
                             ft.Row(
                                 controls=[
                                     ft.Icon(ft.Icons.DESCRIPTION, size=16, color=ft.Colors.BLUE_GREY),

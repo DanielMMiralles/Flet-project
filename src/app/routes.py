@@ -4,6 +4,7 @@ from views.auth.register_view import register_view
 from views.client.client_view import client_view
 from widgets.snackbar_design import modern_snackbar
 from views.admin.admin_view import admin_view
+from views.engineer.engineer_view import engineer_view
 
 def setup_routes(page):
     # Inicializar session_data si no existe
@@ -49,6 +50,8 @@ def setup_routes(page):
             elif route.route == "/admin":
                 # Aquí puedes cargar la vista de administrador
                 page.add(admin_view(page))
+            elif route.route == "/ingeniero":
+                page.add(engineer_view(page))
             else:
                 # Ruta por defecto
                 page.add(login_view(page))

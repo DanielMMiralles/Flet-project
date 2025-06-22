@@ -4,6 +4,7 @@ from widgets.app_bar import app_bar
 from widgets.page_footer import page_footer
 from widgets.client_widgets.product_carousel import products_carousel_view
 from widgets.client_widgets.client_request_preview import client_request_preview
+from widgets.client_widgets.project_tracking import project_tracking_view
 from services.product_service import get_products
 from services.client_service import create_request, get_client_by_user_id
 from utils.database import get_db_connection
@@ -23,6 +24,27 @@ def client_view(page: ft.Page):
     
     # Asignar el AppBar a la página
     page.appbar = app_bar(page, role, username)
+    
+    # Función para mostrar seguimiento de proyectos
+    def show_project_tracking(e):
+        # Obtener client_id real
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT c.id FROM Clientes c
+                INNER JOIN Usuarios u ON c.id_usuario = u.id
+                WHERE u.usuario = ?
+            """, (username,))
+            result = cursor.fetchone()
+            conn.close()
+            real_client_id = result["id"] if result else 1
+        except:
+            real_client_id = 1
+            
+        page.clean()
+        page.add(project_tracking_view(page, real_client_id))
+        page.update()
     
     # Guardar ID de cliente en la sesión (valor por defecto = 1)
     page.session_data["client_id"] = 1
@@ -379,6 +401,17 @@ def client_view(page: ft.Page):
                                                 ft.Container(
                                                     content=ft.Row(
                                                         controls=[
+                                                            ft.ElevatedButton(
+                                                                "Ver Mis Proyectos",
+                                                                icon=ft.Icons.TIMELINE,
+                                                                style=ft.ButtonStyle(
+                                                                    color=ft.Colors.WHITE,
+                                                                    bgcolor=ft.Colors.AMBER_ACCENT,
+                                                                    elevation=3
+                                                                ),
+                                                                on_click=show_project_tracking
+                                                            ),
+                                                            ft.Container(width=20),
                                                             ft.Icon(ft.Icons.ARROW_DOWNWARD, color=ft.Colors.WHITE60, size=20),
                                                             ft.Text("Explora y selecciona", color=ft.Colors.WHITE60, size=14)
                                                         ],

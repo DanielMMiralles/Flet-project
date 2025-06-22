@@ -81,33 +81,39 @@ def app_bar(page: ft.Page, user_role: str, user_name: str = "Usuario") -> ft.App
         ),
         leading_width=180,
         actions=[
-            ft.IconButton(
-                icon=ft.Icons.HOME,
-                icon_size=22,
-                tooltip="Inicio",
-                on_click=lambda _: scroll_to_top(page)
+            ft.Container(
+                content=ft.IconButton(
+                    icon=ft.Icons.HOME,
+                    icon_size=22,
+                    tooltip="Inicio",
+                    on_click=lambda _: go_to_home_dashboard(page)
+                ),
+                margin=ft.margin.only(right=8)
             ),
-            *get_role_specific_actions(page, user_role),
-            ft.PopupMenuButton(
-                icon=ft.Icons.MORE_VERT,
-                tooltip="Más opciones",
-                items=[
-                    ft.PopupMenuItem(
-                        text="Perfil",
-                        icon=ft.Icons.ACCOUNT_CIRCLE,
-                        on_click=lambda _: show_profile_info(page, user_name, user_role)
-                    ),
-                    ft.PopupMenuItem(
-                        text="Configuración",
-                        icon=ft.Icons.SETTINGS,
-                        on_click=lambda _: show_settings_info(page)
-                    ),
-                    ft.PopupMenuItem(
-                        text="Cerrar sesión",
-                        icon=ft.Icons.LOGOUT,
-                        on_click=lambda _: logout(page)
-                    )
-                ]
+            *[ft.Container(content=action, margin=ft.margin.only(right=8)) for action in get_role_specific_actions(page, user_role)],
+            ft.Container(
+                content=ft.PopupMenuButton(
+                    icon=ft.Icons.MORE_VERT,
+                    tooltip="Más opciones",
+                    items=[
+                        ft.PopupMenuItem(
+                            text="Perfil",
+                            icon=ft.Icons.ACCOUNT_CIRCLE,
+                            on_click=lambda _: show_under_construction(page, "Perfil")
+                        ),
+                        ft.PopupMenuItem(
+                            text="Configuración",
+                            icon=ft.Icons.SETTINGS,
+                            on_click=lambda _: show_under_construction(page, "Configuración")
+                        ),
+                        ft.PopupMenuItem(
+                            text="Cerrar sesión",
+                            icon=ft.Icons.LOGOUT,
+                            on_click=lambda _: logout(page)
+                        )
+                    ]
+                ),
+                margin=ft.margin.only(right=8)
             )
         ]
     )
@@ -140,13 +146,19 @@ def get_role_specific_actions(page: ft.Page, user_role: str):
                 icon=ft.Icons.ASSIGNMENT,
                 icon_size=22,
                 tooltip="Mis Tareas",
-                on_click=lambda _: show_notification("Panel de tareas del ingeniero")
+                on_click=lambda _: show_under_construction(page, "Mis Tareas")
+            ),
+            ft.IconButton(
+                icon=ft.Icons.CALENDAR_MONTH,
+                icon_size=22,
+                tooltip="Calendario",
+                on_click=lambda _: show_calendar_view(page)
             ),
             ft.IconButton(
                 icon=ft.Icons.TIMELINE,
                 icon_size=22,
                 tooltip="Progreso",
-                on_click=lambda _: show_notification("Seguimiento de progreso de proyectos")
+                on_click=lambda _: show_under_construction(page, "Seguimiento de Progreso")
             )
         ]
     elif user_role == "admin":
@@ -165,6 +177,37 @@ def get_role_specific_actions(page: ft.Page, user_role: str):
             )
         ]
     return []
+
+# Función para mostrar vista de calendario
+def show_calendar_view(page: ft.Page):
+    from widgets.engineer_widgets.calendar_view import calendar_view
+    page.clean()
+    page.add(calendar_view(page))
+    page.update()
+
+# Función para volver al dashboard según el rol
+def go_to_home_dashboard(page: ft.Page):
+    user_role = page.session_data.get("role", "cliente").lower()
+    
+    if user_role == "ingeniero":
+        from views.engineer.engineer_view import engineer_view
+        page.clean()
+        page.add(engineer_view(page))
+    elif user_role == "admin":
+        from views.admin.admin_view import admin_view
+        page.clean()
+        page.add(admin_view(page))
+    else:  # cliente
+        from views.client.client_view import client_view
+        page.clean()
+        page.add(client_view(page))
+    
+    page.update()
+
+# Función para mostrar pantalla "En construcción"
+def show_under_construction(page: ft.Page, feature_name: str):
+    page.snackbar = modern_snackbar(f"{feature_name} - En construcción 🚧", "info", 3000)
+    page.open(page.snackbar)
 
 # Función para scroll al principio
 def scroll_to_top(page: ft.Page):

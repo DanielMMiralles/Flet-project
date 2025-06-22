@@ -65,6 +65,9 @@ def requests_view(page: ft.Page):
             
             # Actualizar lista de solicitudes
             refresh_requests()
+            
+            # Forzar actualización completa de la página para actualizar badges
+            page.update()
         else:
             # Mostrar mensaje de error
             page.snackbar = modern_snackbar(
@@ -92,6 +95,9 @@ def requests_view(page: ft.Page):
             
             # Actualizar lista de solicitudes
             refresh_requests()
+            
+            # Forzar actualización completa de la página
+            page.update()
         else:
             # Mostrar mensaje de error
             page.snackbar = modern_snackbar(

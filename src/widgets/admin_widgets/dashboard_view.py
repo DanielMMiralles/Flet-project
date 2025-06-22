@@ -1,11 +1,17 @@
 import flet as ft
 from services.dashboard_service import get_dashboard_data
 
+def refresh_dashboard(page: ft.Page):
+    """Función para refrescar el dashboard"""
+    page.go("/admin")
+    page.update()
+
 def dashboard_view(page: ft.Page):
     """Vista de dashboard con visión global de proyectos"""
     
-    # Obtener datos reales del dashboard
+    # Obtener datos reales del dashboard (siempre frescos)
     dashboard_data = get_dashboard_data()
+    print(f"Dashboard data: {dashboard_data}")  # Debug
     
     # Paleta de colores de la aplicación
     primary_color = ft.Colors.BLUE_ACCENT
@@ -27,7 +33,7 @@ def dashboard_view(page: ft.Page):
                                 icon=ft.Icons.REFRESH,
                                 tooltip="Actualizar",
                                 icon_color=primary_color,
-                                on_click=lambda _: page.go("/admin")  # Recargar la vista
+                                on_click=lambda _: refresh_dashboard(page)
                             ),
                             ft.IconButton(
                                 icon=ft.Icons.FILTER_LIST,

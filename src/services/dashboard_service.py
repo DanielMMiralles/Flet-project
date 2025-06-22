@@ -36,10 +36,13 @@ def get_dashboard_data():
         tables = [table[0] for table in cursor.fetchall()]
         print(f"Tablas disponibles: {tables}")
         
-        # Contar proyectos activos
-        if 'Producto' in tables or 'productos' in tables:
-            table_name = 'Producto' if 'Producto' in tables else 'productos'
-            cursor.execute(f"SELECT COUNT(*) FROM {table_name} WHERE status='activo'")
+        # Contar proyectos activos (que tienen equipo asignado)
+        if 'Producto' in tables and 'Asignaciones' in tables:
+            cursor.execute("""
+                SELECT COUNT(DISTINCT p.id) 
+                FROM Producto p 
+                INNER JOIN Asignaciones a ON p.id = a.id_producto
+            """)
             dashboard_data["active_projects"] = cursor.fetchone()[0]
         
         # Contar solicitudes pendientes
@@ -47,24 +50,26 @@ def get_dashboard_data():
             cursor.execute("SELECT COUNT(*) FROM Solicitudes WHERE estado='pendiente'")
             dashboard_data["pending_requests"] = cursor.fetchone()[0]
         
-        # Contar ingenieros asignados
-        if 'Asignaciones' in tables:
-            cursor.execute("SELECT COUNT(DISTINCT id_ingeniero) FROM Asignaciones WHERE fecha_fin IS NULL")
+        # Contar ingenieros disponibles
+        if 'Ingenieros' in tables:
+            cursor.execute("SELECT COUNT(*) FROM Ingenieros WHERE disponible = 1")
             dashboard_data["assigned_engineers"] = cursor.fetchone()[0]
         
-        # Contar proyectos completados
-        if 'Producto' in tables or 'productos' in tables:
-            table_name = 'Producto' if 'Producto' in tables else 'productos'
-            cursor.execute(f"SELECT COUNT(*) FROM {table_name} WHERE status='completado'")
+        # Contar proyectos completados (con progreso 100%)
+        if 'Progreso' in tables:
+            cursor.execute("""
+                SELECT COUNT(DISTINCT id_producto) 
+                FROM Progreso 
+                WHERE porcentaje = 100
+            """)
             dashboard_data["completed_projects"] = cursor.fetchone()[0]
         
-        # Obtener proyectos recientes
-        if 'Producto' in tables or 'productos' in tables:
-            table_name = 'Producto' if 'Producto' in tables else 'productos'
-            cursor.execute(f"""
-                SELECT p.*, c.nombre as cliente_nombre 
-                FROM {table_name} p
-                LEFT JOIN Clientes c ON p.client_id = c.id
+        # Obtener proyectos recientes (solo con equipo asignado)
+        if 'Producto' in tables and 'Asignaciones' in tables:
+            cursor.execute("""
+                SELECT DISTINCT p.* 
+                FROM Producto p
+                INNER JOIN Asignaciones a ON p.id = a.id_producto
                 ORDER BY p.id DESC LIMIT 5
             """)
             
@@ -87,27 +92,17 @@ def get_dashboard_data():
                         )
                     
                     # Obtener cliente
-                    client_name = row["cliente_nombre"] if "cliente_nombre" in row.keys() else "Cliente no asignado"
+                    client_name = "Cliente"
                     
-                    # Obtener ingenieros asignados
+                    # Ingenieros asignados
                     engineers_assigned = "Sin asignar"
-                    if 'Asignaciones' in tables and 'Ingenieros' in tables:
-                        cursor.execute("""
-                            SELECT GROUP_CONCAT(i.nombre, ', ') as nombres
-                            FROM Ingenieros i
-                            JOIN Asignaciones a ON i.id = a.id_ingeniero
-                            WHERE a.id_producto = ?
-                        """, (product.id,))
-                        engineers_row = cursor.fetchone()
-                        if engineers_row and engineers_row["nombres"]:
-                            engineers_assigned = engineers_row["nombres"]
                     
                     # Obtener progreso
                     progress = 0.0
-                    if 'Avances' in tables:
+                    if 'Progress' in tables:
                         cursor.execute("""
-                            SELECT MAX(porcentaje) as maximo FROM Avances
-                            WHERE id_producto = ?
+                            SELECT MAX(percentage) as maximo FROM Progress
+                            WHERE project_id = ?
                         """, (product.id,))
                         progress_row = cursor.fetchone()
                         if progress_row and progress_row["maximo"]:
