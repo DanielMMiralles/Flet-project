@@ -454,27 +454,50 @@ def progress_view(page: ft.Page):
                             ft.Row(
                                 controls=[
                                     ft.Icon(ft.Icons.PERSON, color=primary_color, size=16),
-                                    ft.Text(f"{advance['ingeniero_nombre']} - {advance['especialidad']}", 
-                                           weight="bold", size=14, color=text_color),
-                                    ft.Container(expand=True),
-                                    ft.Text(f"{advance['porcentaje']}%", 
-                                           color=ft.Colors.GREEN, weight="bold"),
-                                    ft.IconButton(
-                                        icon=ft.Icons.EDIT,
-                                        icon_size=16,
-                                        tooltip="Editar",
-                                        on_click=lambda _, adv=advance: show_edit_dialog(adv)
+                                    ft.Container(
+                                        content=ft.Text(
+                                            f"{advance['ingeniero_nombre']} - {advance['especialidad']}", 
+                                            weight="bold", 
+                                            size=14, 
+                                            color=text_color,
+                                            max_lines=1,
+                                            overflow=ft.TextOverflow.ELLIPSIS
+                                        ),
+                                        width=200
                                     ),
-                                    ft.IconButton(
-                                        icon=ft.Icons.DELETE,
-                                        icon_size=16,
-                                        icon_color=ft.Colors.RED,
-                                        tooltip="Eliminar",
-                                        on_click=lambda _, adv=advance: confirm_delete(adv)
+                                    ft.Container(expand=True),
+                                    ft.Container(
+                                        content=ft.Row(
+                                            controls=[
+                                                ft.Text(f"{advance['porcentaje']}%", 
+                                                       color=ft.Colors.GREEN, weight="bold"),
+                                                ft.IconButton(
+                                                    icon=ft.Icons.EDIT,
+                                                    icon_size=16,
+                                                    tooltip="Editar",
+                                                    on_click=lambda _, adv=advance: show_edit_dialog(adv)
+                                                ),
+                                                ft.IconButton(
+                                                    icon=ft.Icons.DELETE,
+                                                    icon_size=16,
+                                                    icon_color=ft.Colors.RED,
+                                                    tooltip="Eliminar",
+                                                    on_click=lambda _, adv=advance: confirm_delete(adv)
+                                                )
+                                            ],
+                                            spacing=5
+                                        ),
+                                        width=120
                                     )
                                 ]
                             ),
-                            ft.Text(advance['descripcion'], size=12, color=text_color),
+                            ft.Text(
+                                advance['descripcion'], 
+                                size=12, 
+                                color=text_color,
+                                max_lines=2,
+                                overflow=ft.TextOverflow.ELLIPSIS
+                            ),
                             ft.Text(f"Registrado: {advance['fecha']}", 
                                    size=10, color=ft.Colors.GREY_600, italic=True)
                         ],

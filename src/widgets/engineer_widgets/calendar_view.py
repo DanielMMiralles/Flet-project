@@ -2,6 +2,9 @@ import flet as ft
 import datetime
 from widgets.snackbar_design import modern_snackbar
 
+# Variable global para eventos temporales que no se pudieron guardar en BD
+_temp_events = {}
+
 def calendar_view(page: ft.Page):
     """Vista de calendario para el ingeniero"""
     
@@ -28,10 +31,44 @@ def calendar_view(page: ft.Page):
         "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
     ]
     
-    # Datos simulados expandidos - usando fechas actuales y futuras
+    # Cargar eventos desde la base de datos
+    def load_events_from_db():
+        try:
+            from utils.database import get_db_connection
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute("""
+                SELECT fecha_evento, titulo, tipo_evento
+                FROM CalendarioEventos
+                WHERE id_ingeniero = ?
+                ORDER BY fecha_evento
+            """, (1,))  # ID del ingeniero
+            
+            db_events = {}
+            for row in cursor.fetchall():
+                date_str = row["fecha_evento"]
+                event = {
+                    "type": row["tipo_evento"],
+                    "title": row["titulo"],
+                    "project": "Personal"
+                }
+                
+                if date_str not in db_events:
+                    db_events[date_str] = []
+                db_events[date_str].append(event)
+            
+            conn.close()
+            return db_events
+            
+        except Exception as e:
+            print(f"Error cargando eventos de BD: {e}")
+            return {}
+    
+    # Combinar eventos de BD con eventos por defecto
     today_str = today.strftime("%Y-%m-%d")
     
-    mock_events = {
+    default_events = {
         "2024-12-15": [{"type": "deadline", "title": "Entrega Sistema Inventario", "project": "Sistema de Inventario"}],
         "2024-12-20": [{"type": "meeting", "title": "Reunión de equipo", "project": "App E-commerce"}],
         "2024-12-25": [{"type": "deadline", "title": "Entrega CRM", "project": "Plataforma CRM"}],
@@ -40,6 +77,20 @@ def calendar_view(page: ft.Page):
         "2025-01-15": [{"type": "deadline", "title": "Entrega Módulo Pagos", "project": "E-commerce"}],
         "2025-02-10": [{"type": "personal", "title": "Capacitación", "project": "Personal"}]
     }
+    
+    # Cargar eventos de BD y combinar
+    db_events = load_events_from_db()
+    mock_events = default_events.copy()
+    
+    # Combinar eventos de BD
+    for date_str, events in db_events.items():
+        if date_str in mock_events:
+            mock_events[date_str].extend(events)
+        else:
+            mock_events[date_str] = events
+    
+    # Usar variable global para eventos temporales
+    global _temp_events
     
     print(f"Eventos disponibles: {list(mock_events.keys())}")
     print(f"Fecha actual: {today_str}")
@@ -129,6 +180,9 @@ def calendar_view(page: ft.Page):
         
         print(f"Buscando eventos para fecha: {date_str}")
         print(f"Eventos encontrados: {events}")
+        print(f"Mock_events actual: {list(mock_events.keys())}")
+        if date_str in mock_events:
+            print(f"Eventos para {date_str}: {mock_events[date_str]}")
         
         if not events:
             events_list.current.controls = [
@@ -248,6 +302,64 @@ def calendar_view(page: ft.Page):
         )
         calendar_container.current.controls[1] = create_calendar()
     
+    def reload_events_from_db():
+        """Recarga eventos desde la base de datos sin perder los existentes"""
+        try:
+            from utils.database import get_db_connection
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute("""
+                SELECT fecha_evento, titulo, tipo_evento
+                FROM CalendarioEventos
+                WHERE id_ingeniero = ?
+                ORDER BY fecha_evento
+            """, (1,))
+            
+            # Limpiar eventos de BD anteriores y recargar
+            db_events = {}
+            for row in cursor.fetchall():
+                date_str = row["fecha_evento"]
+                event = {
+                    "type": row["tipo_evento"],
+                    "title": row["titulo"],
+                    "project": "Personal"
+                }
+                
+                if date_str not in db_events:
+                    db_events[date_str] = []
+                db_events[date_str].append(event)
+            
+            # Actualizar mock_events con eventos de BD sin perder los existentes
+            nonlocal mock_events
+            global _temp_events
+            
+            # Reinicializar con eventos por defecto
+            mock_events = default_events.copy()
+            
+            # Agregar eventos de BD
+            for date_str, events in db_events.items():
+                if date_str in mock_events:
+                    mock_events[date_str].extend(events)
+                else:
+                    mock_events[date_str] = events
+            
+            # Agregar eventos temporales (que no se pudieron guardar en BD)
+            for date_str, events in _temp_events.items():
+                if date_str in mock_events:
+                    # Evitar duplicados
+                    existing_titles = [e['title'] for e in mock_events[date_str]]
+                    for event in events:
+                        if event['title'] not in existing_titles:
+                            mock_events[date_str].append(event)
+                else:
+                    mock_events[date_str] = events
+            
+            conn.close()
+            
+        except Exception as e:
+            print(f"Error recargando eventos: {e}")
+    
     # Crear calendario
     def create_calendar():
         days_in_month = get_days_in_month(current_year.current, current_month.current)
@@ -273,6 +385,9 @@ def calendar_view(page: ft.Page):
         # Espacios vacíos al inicio
         for _ in range(first_weekday):
             current_row.append(ft.Container(width=50, height=50))
+        
+        # Recargar eventos antes de crear el calendario
+        reload_events_from_db()
         
         # Días del mes
         for day in range(1, days_in_month + 1):
@@ -344,19 +459,65 @@ def calendar_view(page: ft.Page):
             page.open(page.snackbar)
             return
             
-        # Guardar evento en mock_events (simulación)
-        new_event = {
-            "type": event_type.value,
-            "title": event_title.value,
-            "project": "Personal"  # Por ahora todos son personales
-        }
-        
-        if event_date.value not in mock_events:
-            mock_events[event_date.value] = []
-        mock_events[event_date.value].append(new_event)
+        # Guardar evento en la base de datos
+        try:
+            from utils.database import get_db_connection
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute("""
+                INSERT INTO CalendarioEventos (id_ingeniero, titulo, descripcion, fecha_evento, tipo_evento)
+                VALUES (?, ?, ?, ?, ?)
+            """, (1, event_title.value, event_title.value, event_date.value, event_type.value))
+            
+            print(f"Insertando evento: {event_title.value} para fecha {event_date.value}")
+            
+            conn.commit()
+            
+            # Verificar que se insertó correctamente
+            cursor.execute("""
+                SELECT COUNT(*) as count FROM CalendarioEventos 
+                WHERE fecha_evento = ? AND titulo = ?
+            """, (event_date.value, event_title.value))
+            
+            result = cursor.fetchone()
+            print(f"Eventos insertados para {event_date.value}: {result['count']}")
+            
+            conn.close()
+            
+            # También agregar a mock_events para mostrar inmediatamente
+            new_event = {
+                "type": event_type.value,
+                "title": event_title.value,
+                "project": "Personal"
+            }
+            
+            if event_date.value not in mock_events:
+                mock_events[event_date.value] = []
+            mock_events[event_date.value].append(new_event)
+            
+        except Exception as e:
+            print(f"Error guardando evento en BD: {e}")
+            # Guardar en temp_events para persistir entre recargas
+            new_event = {
+                "type": event_type.value,
+                "title": event_title.value,
+                "project": "Personal"
+            }
+            
+            if event_date.value not in _temp_events:
+                _temp_events[event_date.value] = []
+            _temp_events[event_date.value].append(new_event)
+            
+            if event_date.value not in mock_events:
+                mock_events[event_date.value] = []
+            mock_events[event_date.value].append(new_event)
         
         print(f"Evento agregado: {event_date.value} -> {new_event}")
         print(f"Eventos actualizados: {mock_events}")
+        
+        # Recargar eventos desde BD inmediatamente
+        reload_events_from_db()
         
         # Actualizar calendario para mostrar la nueva marca
         update_calendar_display()

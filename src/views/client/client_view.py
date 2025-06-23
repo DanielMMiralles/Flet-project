@@ -31,15 +31,23 @@ def client_view(page: ft.Page):
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
+            print(f"Buscando cliente para usuario: {username}")
             cursor.execute("""
-                SELECT c.id FROM Clientes c
+                SELECT c.id, c.nombre FROM Clientes c
                 INNER JOIN Usuarios u ON c.id_usuario = u.id
                 WHERE u.usuario = ?
             """, (username,))
             result = cursor.fetchone()
+            if result:
+                real_client_id = result["id"]
+                print(f"Cliente encontrado: {result['nombre']} (ID: {real_client_id})")
+            else:
+                print(f"No se encontró cliente para usuario: {username}")
+                print("Usando client_id = 1 por defecto")
+                real_client_id = 1
             conn.close()
-            real_client_id = result["id"] if result else 1
-        except:
+        except Exception as e:
+            print(f"Error obteniendo client_id: {e}")
             real_client_id = 1
             
         page.clean()

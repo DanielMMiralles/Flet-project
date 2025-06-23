@@ -32,12 +32,14 @@ def project_tracking_view(page: ft.Page, client_id: int):
             cursor.execute("""
                 SELECT DISTINCT p.*, s.fecha_solicitud, s.detalles,
                        COALESCE(pr.porcentaje, 0) as progreso
-                FROM Producto p
-                INNER JOIN Solicitudes s ON p.id = s.id_producto
+                FROM Solicitudes s
+                INNER JOIN Producto p ON s.id_producto = p.id
                 LEFT JOIN Progreso pr ON p.id = pr.id_producto
                 WHERE s.id_cliente = ? AND s.estado = 'aprobada'
                 ORDER BY s.fecha_solicitud DESC
             """, (client_id,))
+            
+            print(f"Consulta ejecutada para cliente {client_id}")
             
             projects = []
             for row in cursor.fetchall():
@@ -65,16 +67,17 @@ def project_tracking_view(page: ft.Page, client_id: int):
                 
                 project = {
                     "id": row["id"],
-                    "name": row["nombre"],
-                    "description": row["descripcion"],
-                    "days": row["dias"],
-                    "request_date": row["fecha_solicitud"],
-                    "request_details": row["detalles"],
-                    "progress": min(100, row["progreso"]),
+                    "name": row["nombre"] or "Proyecto sin nombre",
+                    "description": row["descripcion"] or "Sin descripción",
+                    "days": row["dias"] or 30,
+                    "request_date": row["fecha_solicitud"] or "2024-01-01",
+                    "request_details": row["detalles"] or "Sin detalles",
+                    "progress": min(100, row["progreso"] or 0),
                     "team": [{"name": t["nombre"], "specialty": t["especialidad"]} for t in team],
                     "recent_advances": [{"date": a["fecha"], "description": a["descripcion"], 
                                        "percentage": a["porcentaje"], "engineer": a["ingeniero"]} for a in recent_advances]
                 }
+                print(f"Proyecto procesado: {project['name']} - {project['progress']}%")
                 projects.append(project)
             
             conn.close()
